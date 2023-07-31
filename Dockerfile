@@ -66,7 +66,7 @@ RUN rustup-init -q -y `
                 --default-host "x86_64-unknown-linux-musl";
 
 # Copying source and building
-RUN git clone "https://github.com/puntopunto/xiu-rndfrk.git" --branch "master" `
+RUN git clone "https://github.com/puntopunto/xiu-rndfrk.git" --branch "ci" `
     && cd "xiu-rndfrk" `
     && git checkout -b "publish"
 
