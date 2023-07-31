@@ -24,6 +24,7 @@ RUN apk cache sync `
     && apk --update-cache upgrade --no-cache `
     && apk add "alpine-conf" `
     && setup-timezone -i ${TZ} `
+    # or "Africa/Nairobi"
     && apk del "alpine-conf" `
     && rm -rf "/var/cache/apk" "/etc/apk/cache" `
     && adduser `
@@ -42,7 +43,6 @@ FROM base AS builder
 
 # Builder args
 ARG TZ
-ARG APP_VERSION
 ARG PATH
 ARG APP_DIR
 
@@ -51,14 +51,14 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 ENV TZ="Europe/Belgrad"
 
 # Workdir
-WORKDIR "/build"
+WORKDIR ${BUILD_DIR}
 
 # Get toolchain
 RUN apk cache sync `
     && apk --update-cache upgrade --no-cache `
     && apk add --no-cache `
-        "openssl-dev" "pkgconf" "git" "rustup" `
-        "musl-dev" "gcc" `
+                "openssl-dev" "pkgconf" "git" "rustup" "musl-dev" `
+                "gcc" "make" `
     && rm -rf "/var/cache/apk" "/etc/apk/cache";
 RUN rustup-init -q -y `
                 --component "cargo" "x86_64-unknown-linux-musl" `
@@ -67,10 +67,9 @@ RUN rustup-init -q -y `
 # Copying source and building
 RUN git clone "https://github.com/harlanc/xiu.git" --branch "master" `
     && cd "xiu" `
-    && git checkout -b "publish" "tags/"${APP_VERSION};
-RUN cargo build --manifest-path "xiu/application/xiu/Cargo.toml" `
-                --target "x86_64-unknown-linux-musl" `
-                --release;
+    && git checkout -b "publish"
+
+RUN cd "xiu" && make "online" && make "build"
 
 # ---
 
@@ -80,12 +79,13 @@ FROM base AS runner
 # Runner args
 ARG APP_DIR
 ARG USER
+ARG BUILD_DIR
 
 # CWD
 WORKDIR ${APP_DIR}
 
 # Copy app
-COPY --link --from=builder "/build/xiu/target/x86_64-unknown-linux-musl/release/." "."
+COPY --link --from=builder "xiu/target/x86_64-unknown-linux-musl/release/xiu" "."
 
 # Switch user
 USER ${USER}
