@@ -78,15 +78,16 @@ RUN cd "xiu-rndfrk" && make "online" && make "build"
 FROM base AS runner
 
 # Runner args
-ARG APP_DIR
-ARG USER
 ARG BUILD_DIR
+ARG APP_DIR
+ARG APP
+ARG USER
 
 # CWD
 WORKDIR ${APP_DIR}
 
 # Copy app
-COPY --link --from=builder "${BUILD_DIR}/xiu-rndfrk/target/x86_64-unknown-linux-musl/release/xiu" "."
+COPY --link --from=builder "${BUILD_DIR}/xiu-rndfrk/target/x86_64-unknown-linux-musl/release/${APP}", "${BUILD_DIR}/xiu-rndfrk/target/x86_64-unknown-linux-musl/release/http-server", "${BUILD_DIR}/xiu-rndfrk/target/x86_64-unknown-linux-musl/release/pprtmp" "."
 
 # Switch user
 USER ${USER}
