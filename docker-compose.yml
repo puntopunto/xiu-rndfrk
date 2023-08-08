@@ -15,8 +15,6 @@ services:
         PLATFORM: ${PLATFORM}
         VERSION: ${VERSION}
         APP_VERSION: ${APP_VERSION}
-        BUILDERPATH: ${BUILDERPATH}
-        RUNNERPATH: ${RUNNERPATH}
         APPDIR: ${APPDIR}
         BUILDDIR: ${BUILDDIR}
         USER: ${USER}
@@ -26,7 +24,7 @@ services:
     container_name: "${COMPOSE_PROJECT_NAME}.${ROOT}"
     environment:
       TZ: ${TZ}
-      PATH: ${RUNNERPATH}
+      PATH: ${PATH}
       SYSROOT: ${SYSROOT}
     working_dir: "${APPDIR}"
     volumes:

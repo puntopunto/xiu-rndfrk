@@ -42,7 +42,6 @@ RUN apk cache sync `
 FROM base AS builder
 
 # Builder args
-ARG BUILDERPATH
 ARG BUILDDIR
 
 # Workdir
@@ -51,23 +50,35 @@ WORKDIR "${BUILDDIR}"
 # Get toolchain
 RUN apk cache sync `
     && apk --update-cache upgrade --no-cache `
-    && apk add --no-cache `
-                "openssl-dev" "pkgconf" "git" "musl-dev" "gcc" "make" `
+    && apk add  --no-cache `
+                "openssl-dev" "curl" "pkgconf" "git" "musl-dev" "gcc" "make" `
     && apk cache clean `
     && rm -rf "/var/cache/apk" "/etc/apk/cache";
-RUN curl https://sh.rustup.rs   -sSf | sh -s `
-                                --component "cargo" `
-                                --component "x86_64-unknown-linux-musl" `
-                                --default-host "x86_64-unknown-linux-musl";
 
-# Copying source and building
+# RUN curl https://sh.rustup.rs -sSf | sh -s -- `
+#                         --quiet `
+#                         -y `
+#                         --default-toolchain "stable-x86_64-unknown-linux-musl" `
+#                         --default-host "x86_64-unknown-linux-musl" `
+#                         --profile "minimal" `
+#                         --component "cargo" `
+#                         --component "x86_64-unknown-linux-musl";
+
+# Copying source
 RUN git clone "https://github.com/puntopunto/xiu-rndfrk.git" --branch "ci" `
     && cd "xiu-rndfrk" `
     && git checkout -b "publish"
 
-WORKDIR "${BUILDDIR}/xiu-rndfrk"
-RUN "make local"
-RUN "make build"
+# Install Rust toolchain
+WORKDIR "/${BUILDDIR}/xiu-rndfrk/ci/scripts"
+RUN chmod +x $INSTALLER_SCRIPT && echo $pwd && $INSTALLER_SCRIPT
+
+# Build app
+WORKDIR "/${BUILDDIR}/xiu-rndfrk"
+RUN rustup self update
+RUN rustup update
+RUN make local
+RUN make build
 
 # ---
 
