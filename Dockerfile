@@ -61,11 +61,12 @@ RUN apk cache sync `
                 "gcc" "make" `
     && rm -rf "/var/cache/apk" "/etc/apk/cache";
 RUN rustup-init -q -y `
-                --component "cargo" "x86_64-unknown-linux-musl" `
+                --component "cargo" `
+                --component "x86_64-unknown-linux-musl" `
                 --default-host "x86_64-unknown-linux-musl";
 
 # Copying source and building
-RUN git clone "https://github.com/puntopunto/xiu-rndfrk.git" --branch "master" `
+RUN git clone "https://github.com/puntopunto/xiu-rndfrk.git" --branch "ci" `
     && cd "xiu-rndfrk" `
     && git checkout -b "publish"
 
@@ -77,15 +78,16 @@ RUN cd "xiu-rndfrk" && make "online" && make "build"
 FROM base AS runner
 
 # Runner args
-ARG APP_DIR
-ARG USER
 ARG BUILD_DIR
+ARG APP_DIR
+ARG APP
+ARG USER
 
 # CWD
 WORKDIR ${APP_DIR}
 
 # Copy app
-COPY --link --from=builder "${BUILD_DIR}/xiu-rndfrk/target/x86_64-unknown-linux-musl/release/xiu" "."
+COPY --link --from=builder "${BUILD_DIR}/xiu-rndfrk/target/x86_64-unknown-linux-musl/release/${APP}", "${BUILD_DIR}/xiu-rndfrk/target/x86_64-unknown-linux-musl/release/http-server", "${BUILD_DIR}/xiu-rndfrk/target/x86_64-unknown-linux-musl/release/pprtmp" "."
 
 # Switch user
 USER ${USER}
