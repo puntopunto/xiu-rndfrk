@@ -15,19 +15,20 @@ services:
         PLATFORM: ${PLATFORM}
         VERSION: ${VERSION}
         APP_VERSION: ${APP_VERSION}
-        PATH: ${PATH}
+        # BUILDERPATH: ${BUILDERPATH}
+        # RUNNERPATH: ${RUNNERPATH}
         APP_DIR: ${APP_DIR}
         BUILD_DIR: ${BUILD_DIR}
         USER: ${USER}
         UID: ${UID}
-        APP: ${APP}
+        APP: ${APPNAME}
     image: "normkd/1688557675-test01:1.0.0"
     container_name: "${COMPOSE_PROJECT_NAME}.${ROOT}"
     environment:
       TZ: ${TZ}
-      PATH: ${PATH}:${APP_DIR}
+      # PATH: ${RUNNERPATH}
       SYSROOT: ${SYSROOT}
-    working_dir: "/app"
+    working_dir: "/${APP_DIR}"
     volumes:
       - "./ci/config:/app/config"
     user: "appuser"
