@@ -4,19 +4,10 @@
 # XIU stream/restream server
 # Test image
 
-# Glob build args, config, and user management 
-ARG PLATFORM
-ARG VERSION
-
 # ---
 
 # 1. Base image
 FROM --platform=${PLATFORM} alpine:${VERSION} AS base
-
-# Build args
-ARG TZ
-ARG USER
-ARG UID
 
 # Base setup
 RUN apk cache sync `
@@ -39,11 +30,6 @@ RUN apk cache sync `
 
 # 2. Build app
 FROM base AS builder
-
-
-
-# Builder args
-ARG BUILDDIR
 
 # Workdir
 WORKDIR "${BUILDDIR}"
@@ -79,20 +65,15 @@ RUN make build
 # 3. Run app
 FROM base AS runner
 
-# Args
-ARG BUILDDIR
-ARG APPDIR
-ARG APPNAME
-ARG USER
-
 # CWD
 WORKDIR "${APPDIR}"
 
 # Copy app
-COPY --link --from=builder  "${TARGETDIR}/${APPNAME}", `
-                            "${TARGETDIR}/${HTTPSERVERDIR}", `
-                            "${TARGETDIR}/${PPRTMPSERVERDIR}" `
-                                                                "${APPDIR}"
+COPY --link --from=builder `
+    "${TARGETAPP}", `
+    "${HTTPSERVER}", `
+    "${PPRTMPSERVER}" `
+                        "${APPDIR}"
 
 # Switch user
 USER ${USER}

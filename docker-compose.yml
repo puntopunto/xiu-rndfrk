@@ -3,30 +3,38 @@ name: "restreamer"
 
 # XIU test pod
 services:
-
   # 1. Base streamer
   root_streamer:
-    extends: "app_builder.yml"
     build:
       context: "."
       target: "runner"
       args:
-        # BUILDER_TZ: ${BUILDER_TZ}
+        # Global
         TZ: ${TZ}
-        PLATFORM: ${PLATFORM}
-        VERSION: ${VERSION}
-        APP_VERSION: ${APP_VERSION}
-        APPDIR: ${APPDIR}
-        BUILDDIR: ${BUILDDIR}
-        USER: ${USER}
-        UID: ${UID}
-        APP: ${APP}
+
+        # Platforms and versions
+        PLATFORM: "linux/amd64"
+        VERSION: "latest"
+        APP_VERSION: "v0.6.1"
+
+        # Paths
+        BUILDDIR: "/build"
+        TARGETDIR:
+          "${BUILDDIR}/xiu-rndfrk/target/x86_64-unknown-linux-musl/release"
+        TARGETAPP: "${TARGETDIR}/${APP}"
+        HTTPSERVER: "${TARGETDIR}/http-server"
+        PPRTMPSERVER: "${TARGETDIR}/pprtmp"
+
+        APPDIR: "/app"
+
+        # User
+        USER: "appuser"
+        UID: "10001"
+
+        # App
+        APP: "xiu"
     image: "normkd/1688557675-test01:1.0.0"
-    container_name: "${COMPOSE_PROJECT_NAME}.${ROOT}"
-    environment:
-      TZ: ${TZ}
-      PATH: ${PATH}
-      SYSROOT: ${SYSROOT}
+    container_name: "${COMPOSE_PROJECT_NAME}.root"
     working_dir: "${APPDIR}"
     volumes:
       - "./ci/config:/app/config"
@@ -56,7 +64,7 @@ services:
   streamer1:
     extends:
       service: "root_streamer"
-    container_name: "${COMPOSE_PROJECT_NAME}.${NODE_01}"
+    container_name: "${COMPOSE_PROJECT_NAME}.node-01"
     hostname: "streamer-01"
     # ports:
     #   - "55002:1935"
@@ -68,7 +76,7 @@ services:
   streamer2:
     extends:
       service: "root_streamer"
-    container_name: "${COMPOSE_PROJECT_NAME}.${NODE_02}"
+    container_name: "${COMPOSE_PROJECT_NAME}.node-02"
     hostname: "streamer-02"
     # ports:
     #   - "55003:1935"
