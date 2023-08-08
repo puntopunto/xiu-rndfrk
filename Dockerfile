@@ -4,10 +4,19 @@
 # XIU stream/restream server
 # Test image
 
+# Base image args
+ARG PLATFORM
+ARG VERSION
 # ---
 
 # 1. Base image
 FROM --platform=${PLATFORM} alpine:${VERSION} AS base
+
+# Local args
+ARG TZ
+ARG BUILDDIR
+ARG UID
+ARG USER
 
 # Base setup
 RUN apk cache sync `
@@ -30,6 +39,9 @@ RUN apk cache sync `
 
 # 2. Build app
 FROM base AS builder
+
+# Local args
+ARG BUILDDIR
 
 # Workdir
 WORKDIR "${BUILDDIR}"
@@ -65,6 +77,13 @@ RUN make build
 # 3. Run app
 FROM base AS runner
 
+# Local args
+ARG APPDIR
+ARG TARGETAPP
+ARG HTTPSERVER
+ARG PPRTMPSERVER
+ARG USER
+
 # CWD
 WORKDIR "${APPDIR}"
 
@@ -86,6 +105,10 @@ EXPOSE "1935"
 EXPOSE "1935/udp"
 EXPOSE "8000"
 EXPOSE "8000/udp"
+
+# Set health-check
+HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 `
+    CMD [ "ping 8.8.8.8" ]
 
 # Start app in exec mode
 ENTRYPOINT [ "xiu" ]
