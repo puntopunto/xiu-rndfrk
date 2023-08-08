@@ -6,6 +6,7 @@ services:
 
   # 1. Base streamer
   root_streamer:
+    extends: "app_builder.yml"
     build:
       context: "."
       target: "runner"
@@ -19,7 +20,7 @@ services:
         BUILDDIR: ${BUILDDIR}
         USER: ${USER}
         UID: ${UID}
-        APP: ${APPNAME}
+        APP: ${APP}
     image: "normkd/1688557675-test01:1.0.0"
     container_name: "${COMPOSE_PROJECT_NAME}.${ROOT}"
     environment:

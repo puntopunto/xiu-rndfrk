@@ -8,7 +8,6 @@
 ARG PLATFORM
 ARG VERSION
 
-
 # ---
 
 # 1. Base image
@@ -41,40 +40,35 @@ RUN apk cache sync `
 # 2. Build app
 FROM base AS builder
 
+
+
 # Builder args
 ARG BUILDDIR
 
 # Workdir
 WORKDIR "${BUILDDIR}"
 
-# Get toolchain
-RUN apk cache sync `
-    && apk --update-cache upgrade --no-cache `
-    && apk add  --no-cache `
-                "openssl-dev" "curl" "pkgconf" "git" "musl-dev" "gcc" "make" `
-    && apk cache clean `
-    && rm -rf "/var/cache/apk" "/etc/apk/cache";
-
-# RUN curl https://sh.rustup.rs -sSf | sh -s -- `
-#                         --quiet `
-#                         -y `
-#                         --default-toolchain "stable-x86_64-unknown-linux-musl" `
-#                         --default-host "x86_64-unknown-linux-musl" `
-#                         --profile "minimal" `
-#                         --component "cargo" `
-#                         --component "x86_64-unknown-linux-musl";
+# Get deps and toolchain
+RUN apk cache sync apk --update-cache upgrade --no-cache;
+RUN apk add --no-cache `
+    "openssl-dev" "curl" "pkgconf" "git" "musl-dev" "gcc" "make";
+RUN apk cache clean && rm -rf "/var/cache/apk" "/etc/apk/cache";
+RUN curl https://sh.rustup.rs -sSf | sh -s -- `
+    --quiet `
+    -y `
+    --default-toolchain "stable-x86_64-unknown-linux-musl" `
+    --default-host "x86_64-unknown-linux-musl" `
+    --profile "minimal" `
+    --component "cargo" `
+    --component "x86_64-unknown-linux-musl";
 
 # Copying source
 RUN git clone "https://github.com/puntopunto/xiu-rndfrk.git" --branch "ci" `
     && cd "xiu-rndfrk" `
     && git checkout -b "publish"
 
-# Install Rust toolchain
-WORKDIR "/${BUILDDIR}/xiu-rndfrk/ci/scripts"
-RUN chmod +x $INSTALLER_SCRIPT && echo $pwd && $INSTALLER_SCRIPT
-
 # Build app
-WORKDIR "/${BUILDDIR}/xiu-rndfrk"
+WORKDIR "${BUILDDIR}/xiu-rndfrk"
 RUN rustup self update
 RUN rustup update
 RUN make local
@@ -95,10 +89,10 @@ ARG USER
 WORKDIR "${APPDIR}"
 
 # Copy app
-COPY --link --from=builder  "/${BUILDDIR}/${TARGETDIR}/${APPNAME}", `
-                            "/${BUILDDIR}/${TARGETDIR}/${HTTPSERVERDIR}", `
-                            "/${BUILDDIR}/${TARGETDIR}/${PPRTMPSERVERDIR}" `
-                            "/${APPDIR}"
+COPY --link --from=builder  "${TARGETDIR}/${APPNAME}", `
+                            "${TARGETDIR}/${HTTPSERVERDIR}", `
+                            "${TARGETDIR}/${PPRTMPSERVERDIR}" `
+                                                                "${APPDIR}"
 
 # Switch user
 USER ${USER}
