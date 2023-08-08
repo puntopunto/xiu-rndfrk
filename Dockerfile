@@ -24,8 +24,8 @@ RUN apk cache sync `
     && apk --update-cache upgrade --no-cache `
     && apk add "alpine-conf" `
     && setup-timezone -i ${TZ} `
-    # or "Africa/Nairobi"
     && apk del "alpine-conf" `
+    && apk cache clean`
     && rm -rf "/var/cache/apk" "/etc/apk/cache" `
     && adduser `
     --uid ${UID} `
@@ -42,38 +42,31 @@ RUN apk cache sync `
 FROM base AS builder
 
 # Builder args
-ARG TZ
 ARG BUILDERPATH
-ARG APP_DIR
-
-# Env
-ENV PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-ENV TZ=${TZ}
+ARG BUILDDIR
 
 # Workdir
-WORKDIR "/${BUILD_DIR}"
+WORKDIR "${BUILDDIR}"
 
 # Get toolchain
-RUN "ls /"
 RUN apk cache sync `
     && apk --update-cache upgrade --no-cache `
     && apk add --no-cache `
-                "openssl-dev" "pkgconf" "git" "rustup" "musl-dev" `
-                "gcc" "make" `
-    && "apk cache clean" `
+                "openssl-dev" "pkgconf" "git" "musl-dev" "gcc" "make" `
+    && apk cache clean `
     && rm -rf "/var/cache/apk" "/etc/apk/cache";
-RUN rustup-init -q -y `
-                --component "cargo" `
-                --component "x86_64-unknown-linux-musl" `
-                --default-host "x86_64-unknown-linux-musl";
+RUN curl https://sh.rustup.rs   -sSf | sh -s `
+                                --component "cargo" `
+                                --component "x86_64-unknown-linux-musl" `
+                                --default-host "x86_64-unknown-linux-musl";
 
 # Copying source and building
 RUN git clone "https://github.com/puntopunto/xiu-rndfrk.git" --branch "ci" `
     && cd "xiu-rndfrk" `
     && git checkout -b "publish"
 
-WORKDIR "/${BUILD_DIR}/xiu-rndfrk"
-RUN "make online"
+WORKDIR "${BUILDDIR}/xiu-rndfrk"
+RUN "make local"
 RUN "make build"
 
 # ---
@@ -82,23 +75,19 @@ RUN "make build"
 FROM base AS runner
 
 # Args
-ARG BUILD_DIR
-ARG APP_DIR
+ARG BUILDDIR
+ARG APPDIR
 ARG APPNAME
 ARG USER
 
-# Env
-ENV TZ=${TZ}
-ENV PATH=${RUNNERPATH}
-
 # CWD
-WORKDIR "/${APP_DIR}"
+WORKDIR "${APPDIR}"
 
 # Copy app
-COPY --link --from=builder  "/${BUILD_DIR}/${TARGET_DIR}/${APPNAME}", `
-                            "/${BUILD_DIR}/${TARGET_DIR}/${HTTPSERVERDIR}", `
-                            "/${BUILD_DIR}/${TARGET_DIR}/${PPRTMPSERVER_DIR}" `
-                            "/${APP_DIR}"
+COPY --link --from=builder  "/${BUILDDIR}/${TARGETDIR}/${APPNAME}", `
+                            "/${BUILDDIR}/${TARGETDIR}/${HTTPSERVERDIR}", `
+                            "/${BUILDDIR}/${TARGETDIR}/${PPRTMPSERVERDIR}" `
+                            "/${APPDIR}"
 
 # Switch user
 USER ${USER}

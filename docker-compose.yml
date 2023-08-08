@@ -15,10 +15,10 @@ services:
         PLATFORM: ${PLATFORM}
         VERSION: ${VERSION}
         APP_VERSION: ${APP_VERSION}
-        # BUILDERPATH: ${BUILDERPATH}
-        # RUNNERPATH: ${RUNNERPATH}
-        APP_DIR: ${APP_DIR}
-        BUILD_DIR: ${BUILD_DIR}
+        BUILDERPATH: ${BUILDERPATH}
+        RUNNERPATH: ${RUNNERPATH}
+        APPDIR: ${APPDIR}
+        BUILDDIR: ${BUILDDIR}
         USER: ${USER}
         UID: ${UID}
         APP: ${APPNAME}
@@ -26,9 +26,9 @@ services:
     container_name: "${COMPOSE_PROJECT_NAME}.${ROOT}"
     environment:
       TZ: ${TZ}
-      # PATH: ${RUNNERPATH}
+      PATH: ${RUNNERPATH}
       SYSROOT: ${SYSROOT}
-    working_dir: "/${APP_DIR}"
+    working_dir: "${APPDIR}"
     volumes:
       - "./ci/config:/app/config"
     user: "appuser"

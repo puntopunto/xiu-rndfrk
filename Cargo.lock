@@ -388,12 +388,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "env_logger"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "85cdab6a89accf66733ad5a1693a4dcced6aeff64602b634530dd73c1f3ee9f0"
+dependencies = [
+ "humantime",
+ "is-terminal",
+ "log",
+ "regex",
+ "termcolor",
+]
+
+[[package]]
 name = "env_logger_extend"
 version = "0.1.1"
 dependencies = [
  "anyhow",
  "chrono",
- "env_logger",
+ "env_logger 0.10.0",
  "failure",
  "job_scheduler",
  "log",
@@ -407,7 +420,7 @@ checksum = "49a04972dcdb9059f64c2be2b4445188c3d3713dabc7bb65cf10c933251dbc5d"
 dependencies = [
  "anyhow",
  "chrono",
- "env_logger",
+ "env_logger 0.9.3",
  "failure",
  "job_scheduler",
  "log",
@@ -698,7 +711,7 @@ checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
 
 [[package]]
 name = "hls"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "byteorder",
  "bytes",
@@ -715,9 +728,9 @@ dependencies = [
 
 [[package]]
 name = "hls"
-version = "0.3.0"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e19c6ce32c96b10744038da2478878f41fb25cb9d70eff431ed8110b1ebf515a"
+checksum = "1383a0365af2daef18ddaf53ee8050aaeb6a32d4c3915f77cbc98c5807752ce4"
 dependencies = [
  "byteorder",
  "bytes",
@@ -775,7 +788,7 @@ name = "http-server"
 version = "0.1.0"
 dependencies = [
  "axum",
- "env_logger",
+ "env_logger 0.10.0",
  "log",
  "serde",
  "serde_derive",
@@ -1264,7 +1277,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
- "env_logger",
+ "env_logger 0.10.0",
  "log",
  "rtmp 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "streamhub 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2296,14 +2309,14 @@ dependencies = [
 
 [[package]]
 name = "xiu"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "anyhow",
  "axum",
  "clap",
  "env_logger_extend 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure",
- "hls 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "hls 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "httpflv 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc",
  "log",
