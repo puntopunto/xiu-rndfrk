@@ -13,27 +13,27 @@ ARG VERSION
 FROM --platform=${PLATFORM} alpine:${VERSION} AS base
 
 # Local args
-ARG TZ
-ARG BUILDDIR
-ARG UID
-ARG USER
+ARG tz
+ARG builddir
+ARG uid
+ARG user
 
 # Base setup
 RUN apk cache sync `
     && apk --update-cache upgrade --no-cache `
     && apk add "alpine-conf" `
-    && setup-timezone -i ${TZ} `
+    && setup-timezone -i ${tz} `
     && apk del "alpine-conf" `
     && apk cache clean`
     && rm -rf "/var/cache/apk" "/etc/apk/cache" `
     && adduser `
-    --uid ${UID} `
+    --uid ${uid} `
     --gecos "Special no-login user for app." `
     --shell "/sbin/nologin" `
     --home "/nonexistent" `
     --no-create-home `
     --disabled-password `
-    ${USER};
+    ${user};
 
 # ---
 
@@ -41,10 +41,10 @@ RUN apk cache sync `
 FROM base AS builder
 
 # Local args
-ARG BUILDDIR
+ARG builddir
 
 # Workdir
-WORKDIR "${BUILDDIR}"
+WORKDIR "${builddir}"
 
 # Get deps and toolchain
 RUN apk cache sync apk --update-cache upgrade --no-cache;
@@ -66,7 +66,7 @@ RUN git clone "https://github.com/puntopunto/xiu-rndfrk.git" --branch "ci" `
     && git checkout -b "publish"
 
 # Build app
-WORKDIR "${BUILDDIR}/xiu-rndfrk"
+WORKDIR "${builddir}/xiu-rndfrk"
 RUN rustup self update
 RUN rustup update
 RUN make local
@@ -78,24 +78,22 @@ RUN make build
 FROM base AS runner
 
 # Local args
-ARG APPDIR
-ARG TARGETAPP
-ARG HTTPSERVER
-ARG PPRTMPSERVER
-ARG USER
+ARG appdir
+ARG app
+ARG web
+ARG pprtmp
+ARG user
+
+
 
 # CWD
-WORKDIR "${APPDIR}"
+WORKDIR "${appdir}"
 
 # Copy app
-COPY --link --from=builder `
-    "${TARGETAPP}", `
-    "${HTTPSERVER}", `
-    "${PPRTMPSERVER}" `
-                        "${APPDIR}"
+COPY --link --from=builder "${app}", "${web}", "${pprtmp}" "${appdir}"
 
 # Switch user
-USER ${USER}
+USER ${user}
 
 # Ports
 EXPOSE "80"

@@ -13,29 +13,29 @@ services:
         TZ: ${TZ}
 
         # Platforms and versions
-        PLATFORM: "linux/amd64"
-        VERSION: "latest"
-        APP_VERSION: "v0.6.1"
+        platform: "linux/amd64"
+        version: "latest"
+        appversion: "v0.6.1"
 
         # Paths
-        BUILDDIR: "/build"
-        TARGETDIR:
-          "${BUILDDIR}/xiu-rndfrk/target/x86_64-unknown-linux-musl/release"
-        TARGETAPP: "${TARGETDIR}/${APP}"
-        HTTPSERVER: "${TARGETDIR}/http-server"
-        PPRTMPSERVER: "${TARGETDIR}/pprtmp"
+        buildroot: "/build"
+        target:
+          "${buildroot}/xiu-rndfrk/target/x86_64-unknown-linux-musl/release"
+        app: "${target}/${app_name}"
+        appweb: "${target}/http-server"
+        pprtmp: "${target}/pprtmp"
 
-        APPDIR: "/app"
+        appdir: "/app"
 
         # User
         USER: "appuser"
         UID: "10001"
 
         # App
-        APP: "xiu"
+        app_name: "xiu"
     image: "normkd/1688557675-test01:1.0.0"
     container_name: "${COMPOSE_PROJECT_NAME}.root"
-    working_dir: "${APPDIR}"
+    working_dir: "${appdir}"
     volumes:
       - "./ci/config:/app/config"
     user: "appuser"
