@@ -1,8 +1,14 @@
 version: "3"
 name: "restreamer"
 
-# XIU test pod
+## XIU local test (no swarm)
+
+# ---
+# App containers
+
+# Restremer 'pod'
 services:
+
   # 1. Base streamer
   root_streamer:
     build:
@@ -10,32 +16,36 @@ services:
       target: "runner"
       args:
         # Global
-        TZ: ${TZ}
+        tz: ${tz}
 
         # Platforms and versions
         platform: "linux/amd64"
         version: "latest"
-        appversion: "v0.6.1"
+
+        # App and deps sources
+        rustup_init_url: "https://sh.rustup.rs"
+        source_url: "https://github.com/puntopunto/xiu-rndfrk.git"
+        source_branch: "ci"
+        source_dir: "${buildroot}/xiu-rndfrk"
+        app_version: "v0.6.1"
 
         # Paths
         buildroot: "/build"
-        target:
-          "${buildroot}/xiu-rndfrk/target/x86_64-unknown-linux-musl/release"
-        app: "${target}/${app_name}"
-        appweb: "${target}/http-server"
-        pprtmp: "${target}/pprtmp"
-
+        target: "/build/xiu-rndfrk/_tgt/x86_64-unknown-linux-musl/release"
         appdir: "/app"
 
         # User
-        USER: "appuser"
-        UID: "10001"
+        user: "appuser"
+        uid: "10001"
 
-        # App
-        app_name: "xiu"
+        # Apps
+        app: "xiu"
+        web: "http-server"
+        pprtmp: "pprtmp"
+
+    # Container settings
     image: "normkd/1688557675-test01:1.0.0"
     container_name: "${COMPOSE_PROJECT_NAME}.root"
-    working_dir: "${appdir}"
     volumes:
       - "./ci/config:/app/config"
     user: "appuser"
@@ -85,6 +95,10 @@ services:
     #   intra:
     #     ipv4_address: "172.16.120.5"
 
+# ---
+# Pod settings
+
+# Networking
 networks:
   intra:
     external: false

@@ -5,18 +5,18 @@
 # Test image
 
 # Base image args
-ARG PLATFORM
-ARG VERSION
+ARG platform="linux/amd64"
+ARG version="latest"
+
 # ---
 
 # 1. Base image
-FROM --platform=${PLATFORM} alpine:${VERSION} AS base
+FROM --platform=${platform} alpine:${version} AS base
 
 # Local args
-ARG tz
-ARG builddir
-ARG uid
-ARG user
+ARG tz = "Africa/Niamey"
+ARG uid = "10001"
+ARG user = "appuser"
 
 # Base setup
 RUN apk cache sync `
@@ -40,18 +40,24 @@ RUN apk cache sync `
 # 2. Build app
 FROM base AS builder
 
-# Local args
-ARG builddir
+# App build args
+ARG buildroot="/build"
+
+# App and deps sources
+ARG rustup_init_url = "https://sh.rustup.rs"
+ARG source_url = "https://github.com/puntopunto/xiu-rndfrk.git"
+ARG source_branch = "ci"
+ARG source_dir = "${buildroot}/xiu-rndfrk"
 
 # Workdir
-WORKDIR "${builddir}"
+WORKDIR "${buildroot}"
 
 # Get deps and toolchain
 RUN apk cache sync apk --update-cache upgrade --no-cache;
 RUN apk add --no-cache `
-    "openssl-dev" "curl" "pkgconf" "git" "musl-dev" "gcc" "make";
+    "openssl-dev" "pkgconf" "git" "musl-dev" "gcc" "make";
 RUN apk cache clean && rm -rf "/var/cache/apk" "/etc/apk/cache";
-RUN curl https://sh.rustup.rs -sSf | sh -s -- `
+RUN wget --quiet --output-document - ${rustup_init_url} | sh -s -- `
     --quiet `
     -y `
     --default-toolchain "stable-x86_64-unknown-linux-musl" `
@@ -61,12 +67,13 @@ RUN curl https://sh.rustup.rs -sSf | sh -s -- `
     --component "x86_64-unknown-linux-musl";
 
 # Copying source
-RUN git clone "https://github.com/puntopunto/xiu-rndfrk.git" --branch "ci" `
-    && cd "xiu-rndfrk" `
-    && git checkout -b "publish"
+# TODO: add '--tag' property
+RUN git clone ${source_url} --branch ${source_branch}
+# WORKDIR "${buildroot}/xiu-rndfrk"
+WORKDIR ${source_dir}
+RUN checkout -b "publish"
 
 # Build app
-WORKDIR "${builddir}/xiu-rndfrk"
 RUN rustup self update
 RUN rustup update
 RUN make local
@@ -77,36 +84,49 @@ RUN make build
 # 3. Run app
 FROM base AS runner
 
-# Local args
-ARG appdir
-ARG app
-ARG web
-ARG pprtmp
-ARG user
+# Image build settings
+ARG target: "/build/xiu-rndfrk/_tgt/x86_64-unknown-linux-musl/release"
+ARG appdir = "/app"
+ARG app = "xiu"
+ARG web = "http-server"
+ARG pprtmp = "pprtmp"
+ARG user = "appuser"
 
-
+# Container settings
+ARG p_http = 80
+ARG p_httpudp = 80/udp
+ARG p_https = 443
+ARG p_rtmp = 1935
+ARG p_rtmpudp = 1935/udp
+ARG p_api = 8000
+ARG p_apiudp = 8000/udp
+ARG statuscheck_addr = 8.8.8.8
+ARG c_exit_code = 101
 
 # CWD
 WORKDIR "${appdir}"
 
 # Copy app
-COPY --link --from=builder "${app}", "${web}", "${pprtmp}" "${appdir}"
+COPY --link --from=builder  "${target}/${app}", `
+                            "${target}/${web}", `
+                            "${target}/${pprtmp}" `
+                                                    ./
 
 # Switch user
 USER ${user}
 
 # Ports
-EXPOSE "80"
-EXPOSE "80/udp"
-EXPOSE "443"
-EXPOSE "1935"
-EXPOSE "1935/udp"
-EXPOSE "8000"
-EXPOSE "8000/udp"
+EXPOSE ${p_http}
+EXPOSE ${p_httpudp}
+EXPOSE ${p_https}
+EXPOSE ${p_rtmp}
+EXPOSE ${p_rtmpudp}
+EXPOSE ${p_api}
+EXPOSE ${p_api}
 
 # Set health-check
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 `
-    CMD [ "ping 8.8.8.8" ]
+HEALTHCHECK --interval=5m --timeout=10s --start-period=5s --retries=3 `
+    CMD ping "8.8.8.8" -c "5" || exit (${c_exit_code})
 
 # Start app in exec mode
-ENTRYPOINT [ "xiu" ]
+ENTRYPOINT [ ${app} ]
