@@ -1,0 +1,119 @@
+version: "3"
+name: "restreamer"
+
+## XIU local test (no swarm)
+
+# ---
+# App containers
+
+# Restremer 'pod'
+services:
+
+  # 1. Base streamer
+  root_streamer:
+    build:
+      context: "."
+      target: "runner"
+      args:
+        # Global
+        tz: ${tz}
+
+        # Platforms and versions
+        platform: "linux/amd64"
+        version: "latest"
+
+        # App and deps sources
+        rustup_init_url: "https://sh.rustup.rs"
+        source_url: "https://github.com/puntopunto/xiu-rndfrk.git"
+        source_branch: "ci"
+        source_dir: "${buildroot}/xiu-rndfrk"
+        app_version: "v0.6.1"
+
+        # Paths
+        buildroot: "/build"
+        target: "/build/xiu-rndfrk/_tgt/x86_64-unknown-linux-musl/release"
+        appdir: "/app"
+
+        # User
+        user: "appuser"
+        uid: "10001"
+
+        # Apps
+        app: "xiu"
+        web: "http-server"
+        pprtmp: "pprtmp"
+
+    # Container settings
+    image: "normkd/1688557675-test01:1.0.0"
+    container_name: "${COMPOSE_PROJECT_NAME}.root"
+    volumes:
+      - "./ci/config:/app/config"
+    user: "appuser"
+    hostname: "streamer-00"
+    expose:
+      - "80"
+      - "80/udp"
+      - "443"
+      - "1935"
+      - "1935/udp"
+      - "8000"
+      - "8000/udp"
+    networks:
+      - intra
+    #     ipv4_address: "172.16.100.5"
+    # ports:
+    #   - "55001:1935"
+    #   - "1935:1935/udp"
+    #   - "8000:8000" 
+    #   - "8000:8000/udp"
+    # extra_hosts:
+    #   - "host.docker.internal:host-gateway"
+    command: ["-c", "config/config_rtmp.toml"]
+
+  # 2. Streamer instances
+  streamer1:
+    extends:
+      service: "root_streamer"
+    container_name: "${COMPOSE_PROJECT_NAME}.node-01"
+    hostname: "streamer-01"
+    # ports:
+    #   - "55002:1935"
+    #   - "8000:8000"
+    # networks:
+    #   intra:
+    #     ipv4_address: "172.16.110.6"
+
+  streamer2:
+    extends:
+      service: "root_streamer"
+    container_name: "${COMPOSE_PROJECT_NAME}.node-02"
+    hostname: "streamer-02"
+    # ports:
+    #   - "55003:1935"
+    #   - "8000:8000"
+    # networks:
+    #   intra:
+    #     ipv4_address: "172.16.120.5"
+
+# ---
+# Pod settings
+
+# Networking
+networks:
+  intra:
+    external: false
+    attachable: false
+    enable_ipv6: false
+    name: "restreamer_pod"
+    driver: "ipvlan"
+    driver_opts:
+      ipvlan_mode: "l2"
+      ipvlan_flag: "bridge"
+      subnet: "172.100.100.0/24"
+      ip_range: "172.100.100.0/28"
+      gateway: "172.100.100.10"
+    # ipam:
+    #   config:
+    #     - subnet: "172.100.100.0/24"
+    #     - ip_range: "172.100.100.0/28"
+    #     - gateway: "172.100.100.10"

@@ -1,6 +1,8 @@
 # syntax=docker/dockerfile:1
 # escape=`
 
+# TODO: fix all.
+
 # XIU stream/restream server
 # Test image
 
