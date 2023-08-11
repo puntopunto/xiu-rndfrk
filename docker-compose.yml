@@ -4,6 +4,20 @@ name: "restreamer"
 ## XIU local test (no swarm)
 
 # ---
+# X-Defines
+
+# Network settings
+x-network:
+  expose: &ports 
+    - ${p_http}
+    - ${p_httpudp}
+    - ${p_https}
+    - ${p_rtmp}
+    - ${p_rtmpudp}
+    - ${p_api},
+    - ${p_apiudp}
+
+# ---
 # App containers
 
 # Restremer 'pod'
@@ -31,6 +45,8 @@ services:
 
         # Paths
         buildroot: "/build"
+        # TODO: check 'cargoroot' (absolute/relative, with defaults).
+        cargoroot: "~/.cargo/bin"
         target: "/build/xiu-rndfrk/_tgt/x86_64-unknown-linux-musl/release"
         appdir: "/app"
 
@@ -49,17 +65,15 @@ services:
     volumes:
       - "./ci/config:/app/config"
     user: "appuser"
+    healthcheck:
+      test: ["executable", "arg"]
+      interval: 1m30s
+      timeout: 30s
+      retries: 5
+      start_period: 30s
+    << : *ports
     hostname: "streamer-00"
-    expose:
-      ${p_http},
-      ${p_httpudp},
-      ${p_https},
-      ${p_rtmp},
-      ${p_rtmpudp},
-      ${p_api},
-      ${p_apiudp},
-      ${statuscheck_addr},
-      ${c_exit_code}
+
 
     networks:
       - intra

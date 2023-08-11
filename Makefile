@@ -21,8 +21,7 @@ build:
 	cargo build
 
 build-musl:
-	cargo build --target "x86_64-unknown-linux-musl" \
-				--release
+	cargo build --target "x86_64-unknown-linux-musl" --release
 
 build-default-platform:
 	cargo build --release

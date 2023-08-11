@@ -26,6 +26,7 @@ RUN apk cache sync `
     && apk del "alpine-conf" `
     && apk cache clean `
     && rm -rf "/var/cache/apk" "/etc/apk/cache" `
+    && `
     && adduser `
     --uid ${uid} `
     --gecos "Special no-login user for app." `
@@ -42,6 +43,8 @@ FROM base AS builder
 
 # App build args
 ARG buildroot="/build"
+ARG cargoroot="/root/.cargo/bin"
+ARG user="appuser"
 
 # App and deps sources
 ARG rustup_init_url="https://sh.rustup.rs"
@@ -53,18 +56,18 @@ ARG source_dir="${buildroot}/xiu-rndfrk"
 WORKDIR "${buildroot}"
 
 # Get deps and toolchain
-RUN apk cache sync apk upgrade;
+RUN apk cache sync && apk update && apk upgrade;
 RUN apk add `
     "openssl-dev" "pkgconf" "git" "musl-dev" "gcc" "make";
 RUN apk cache clean && rm -rf "/var/cache/apk" "/etc/apk/cache";
+USER ${appuser}
 RUN wget --quiet --output-document - ${rustup_init_url} | sh -s -- `
     --quiet `
     -y `
     --default-toolchain "stable-x86_64-unknown-linux-musl" `
     --default-host "x86_64-unknown-linux-musl" `
     --profile "minimal" `
-    --component "cargo" `
-    --component "x86_64-unknown-linux-musl";
+    --component "cargo";
 
 # Copying source
 COPY . .
