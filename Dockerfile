@@ -26,7 +26,6 @@ RUN apk cache sync `
     && apk del "alpine-conf" `
     && apk cache clean `
     && rm -rf "/var/cache/apk" "/etc/apk/cache" `
-    && `
     && adduser `
     --uid ${uid} `
     --gecos "Special no-login user for app." `
@@ -34,7 +33,7 @@ RUN apk cache sync `
     --home "/nonexistent" `
     --no-create-home `
     --disabled-password `
-    ${user};
+    ${user} 
 
 # ---
 
@@ -50,17 +49,15 @@ ARG user="appuser"
 ARG rustup_init_url="https://sh.rustup.rs"
 ARG source_url="https://github.com/puntopunto/xiu-rndfrk.git"
 ARG source_branch="ci"
-ARG source_dir="${buildroot}/xiu-rndfrk"
+ARG source_dir="/build/xiu-rndfrk"
 
 # Workdir
-WORKDIR "${buildroot}"
+WORKDIR ${buildroot}
 
 # Get deps and toolchain
 RUN apk cache sync && apk update && apk upgrade;
-RUN apk add `
-    "openssl-dev" "pkgconf" "git" "musl-dev" "gcc" "make";
+RUN apk add "openssl-dev" "pkgconf" "musl-dev" "gcc" "make";
 RUN apk cache clean && rm -rf "/var/cache/apk" "/etc/apk/cache";
-USER ${appuser}
 RUN wget --quiet --output-document - ${rustup_init_url} | sh -s -- `
     --quiet `
     -y `
@@ -69,7 +66,11 @@ RUN wget --quiet --output-document - ${rustup_init_url} | sh -s -- `
     --profile "minimal" `
     --component "cargo";
 
+# Logging in as no-priv user
+USER ${appuser}
+
 # Copying source
+WORKDIR ${buildroot}
 COPY . .
 
 # Build app
