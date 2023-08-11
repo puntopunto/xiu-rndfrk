@@ -77,6 +77,8 @@ services:
 
     networks:
       - intra
+    expose:
+      <<: *ports
     #     ipv4_address: "172.16.100.5"
     # ports:
     #   - "55001:1935"
