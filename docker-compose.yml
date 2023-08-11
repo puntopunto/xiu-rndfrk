@@ -51,13 +51,16 @@ services:
     user: "appuser"
     hostname: "streamer-00"
     expose:
-      - "80"
-      - "80/udp"
-      - "443"
-      - "1935"
-      - "1935/udp"
-      - "8000"
-      - "8000/udp"
+      ${p_http},
+      ${p_httpudp},
+      ${p_https},
+      ${p_rtmp},
+      ${p_rtmpudp},
+      ${p_api},
+      ${p_apiudp},
+      ${statuscheck_addr},
+      ${c_exit_code}
+
     networks:
       - intra
     #     ipv4_address: "172.16.100.5"
@@ -68,6 +71,7 @@ services:
     #   - "8000:8000/udp"
     # extra_hosts:
     #   - "host.docker.internal:host-gateway"
+  
     command: ["-c", "config/config_rtmp.toml"]
 
   # 2. Streamer instances

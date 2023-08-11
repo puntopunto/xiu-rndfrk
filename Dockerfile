@@ -53,8 +53,8 @@ ARG source_dir="${buildroot}/xiu-rndfrk"
 WORKDIR "${buildroot}"
 
 # Get deps and toolchain
-RUN apk cache sync apk --update-cache upgrade --no-cache;
-RUN apk add --no-cache `
+RUN apk cache sync apk upgrade;
+RUN apk add `
     "openssl-dev" "pkgconf" "git" "musl-dev" "gcc" "make";
 RUN apk cache clean && rm -rf "/var/cache/apk" "/etc/apk/cache";
 RUN wget --quiet --output-document - ${rustup_init_url} | sh -s -- `
@@ -67,11 +67,7 @@ RUN wget --quiet --output-document - ${rustup_init_url} | sh -s -- `
     --component "x86_64-unknown-linux-musl";
 
 # Copying source
-# TODO: add '--tag' property
-RUN git clone ${source_url} --branch ${source_branch}
-# WORKDIR "${buildroot}/xiu-rndfrk"
-WORKDIR ${source_dir}
-RUN checkout -b "publish"
+COPY . .
 
 # Build app
 RUN rustup self update
@@ -92,7 +88,7 @@ ARG web="http-server"
 ARG pprtmp="pprtmp"
 ARG user="appuser"
 
-# Container settings
+# Network args
 ARG p_http=80
 ARG p_httpudp=80/udp
 ARG p_https=443
@@ -100,7 +96,10 @@ ARG p_rtmp=1935
 ARG p_rtmpudp=1935/udp
 ARG p_api=8000
 ARG p_apiudp=8000/udp
+
+# Healthcheck args
 ARG statuscheck_addr="8.8.8.8"
+ARG statuscheck_count=5
 ARG c_exit_code=101
 
 # CWD
@@ -126,7 +125,8 @@ EXPOSE ${p_api}
 
 # Set health-check
 HEALTHCHECK --interval=5m --timeout=10s --start-period=5s --retries=3 `
-    CMD ping "8.8.8.8" -c "5" || exit (${c_exit_code})
+    CMD ping ${statuscheck_addr} -c ${statuscheck_count} `
+        || exit ${c_exit_code}
 
 # Start app in exec mode
 ENTRYPOINT [ ${app} ]

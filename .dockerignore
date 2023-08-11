@@ -1,3 +1,14 @@
-# This file has no special needs with in-container build.
-../**/*
+# Exclude from build
+# Master setting
+
+# Exclude all except app sources
 **/*
+!application
+!ci/scripts
+!confs
+!library
+!protocol
+!Makefile
+!Cargo.lock
+!Cargo.toml
+!LICENSE
