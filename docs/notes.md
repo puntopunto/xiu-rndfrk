@@ -1,22 +1,30 @@
-Notes
-===
+# **Notes**
 
-Some stuff about all
----
+_|_ ***`Some stuff about all`***
 
-Contents
+## Contents
 
-![OLO](../docs/image/notes/unknown.png)
+1. [Dotenv example](#dotenv-example)
 
-1. [Dotenv example](#01)
-
-2. [Another example for test](#02)
+2. [Another example for test](#another-example-for-test)
 
 ---
 
-[Dotenv example](01)
+## [Dotenv example](#contents)
 
-```conf
+![OLO](../docs/image/notes/IMG_4678_2.JPG)
+
+<div style="width: 100%; text-align: center; margin: 0 50%">
+|| Further reading ||
+|-|-|-|
+| Back | Contents | Next |
+</div>
+
+---
+
+## [Another example for test](#contents)
+
+```sh
 # Standart runtime vars
 
 # Date and time

@@ -24,7 +24,7 @@ RUN apk cache sync `
     && apk add "alpine-conf" `
     && setup-timezone -i ${tz} `
     && apk del "alpine-conf" `
-    && apk cache clean`
+    && apk cache clean `
     && rm -rf "/var/cache/apk" "/etc/apk/cache" `
     && adduser `
     --uid ${uid} `

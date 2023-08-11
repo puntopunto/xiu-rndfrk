@@ -1,0 +1,97 @@
+{
+	"folders": [
+		{
+			"name": "xiu_rndfrk",
+			"path": "."
+		},
+		{
+			"name": "xiurndfrk_ci",
+			"path": "../../../CID/CID-Projects/MediaProjects/xiurndfrk_ci"
+		}
+	],
+	"settings": {
+		"clangd.checkUpdates": true,
+		"docker.contexts.showInStatusBar": true,
+		"docker-linter.flake8.enable": true,
+		"vsdocker.imageUser": "normkd",
+		"docs.templates.githubid": "puntopunto",
+		"cSpell.customDictionaries": {
+
+			"custom-dictionary-workspace": {
+				"name": "custom-dictionary-workspace",
+				"path": "${workspaceFolder:xiu_rndfrk}/.cspell/custom-dictionary-workspace.txt",
+				"addWords": true,
+				"scope": "workspace"
+			}
+		},
+		"powershell.cwd": "c:\\Users\\ushey\\Personel\\MediaDev\\Projects\\xiu-rndfrk",
+		"cSpell.enabledLanguageIds": [
+			"asciidoc",
+			"c",
+			"cpp",
+			"csharp",
+			"css",
+			"elixir",
+			"erlang",
+			"git-commit",
+			"go",
+			"graphql",
+			"handlebars",
+			"haskell",
+			"html",
+			"jade",
+			"java",
+			"javascript",
+			"javascriptreact",
+			"json",
+			"jsonc",
+			"jupyter",
+			"latex",
+			"less",
+			"markdown",
+			"php",
+			"plaintext",
+			"python",
+			"pug",
+			"restructuredtext",
+			"rust",
+			"scala",
+			"scss",
+			"scminput",
+			"swift",
+			"text",
+			"typescript",
+			"typescriptreact",
+			"vue",
+			"yaml",
+			"yml",
+			"COBOL",
+			"ACUCOBOL"
+		],
+		"cSpell.caseSensitive": true,
+		"docker.containers.groupByLabel": "com.testorg.filtering.xiu-test",
+		"docker.networks.groupBy": "NetworkDriver",
+		"docker.volumes.groupBy": "VolumeName",
+		"docker.volumes.sortBy": "Label",
+		"docker-compose.enableTelemetry": true,
+		"ansible.python.interpreterPath": "python3.11",
+		"ansible.executionEnvironment.enabled": true,
+		"ansible.executionEnvironment.containerEngine": "docker",
+		"redhat.telemetry.enabled": true,
+		"ansible.lightspeed.enabled": true,
+		"ansible.lightspeed.suggestions.enabled": true,
+		"files.autoSave": "afterDelay",
+		"editor.fontFamily": "'JetBrainsMono Nerd Font', Consolas, 'Courier New', monospace",
+		"inline-bookmarks.view.showVisibleFilesOnly": true
+	},
+	"tasks": {
+		"version": "2.0.0",
+		"tasks": [
+			{
+				"label": "echo",
+				"type": "shell",
+				"command": "echo Hello"
+			}
+		]
+	}
+}
