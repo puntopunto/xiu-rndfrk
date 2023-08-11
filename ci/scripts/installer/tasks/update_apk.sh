@@ -14,7 +14,7 @@ DEFAULT_EXIT_CODE=0
 EXIT_CODE=$DEFAULT_EXIT_CODE
 
 # Update APK
-function update_apk () {
+update_apk () {
     # Upgrading
     apk cache sync &&
     apk update &&

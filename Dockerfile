@@ -61,12 +61,12 @@ RUN apk cache clean && rm -rf "/var/cache/apk" "/etc/apk/cache";
 RUN wget --quiet --output-document - ${rustup_init_url} | sh -s -- `
     --quiet `
     -y `
-    --default-toolchain "stable-x86_64-unknown-linux-musl" `
     --default-host "x86_64-unknown-linux-musl" `
+    --default-toolchain "stable-x86_64-unknown-linux-musl" `
     --profile "minimal" `
     --component "cargo";
 
-# Logging in as no-priv user
+# Switch user for sec reasons
 USER ${appuser}
 
 # Copying source
