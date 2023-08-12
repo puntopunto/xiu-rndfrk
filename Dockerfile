@@ -35,7 +35,7 @@ RUN apk --update-cache upgrade --no-cache `
         -H `
         -D `
         -S `
-        ${user}
+        ${user};
 
 # ------------------------------------------------------------------------------
 
@@ -44,8 +44,8 @@ FROM base AS builder
 
 # App and deps sources
 ARG rustup_init_url="https://sh.rustup.rs"
-ARG dev_packages=[ "openssl-dev", "pkgconf", "musl-dev", "gcc", "make" ]
-ARG apk_cache_dirs=[ "/var/cache/apk", "/etc/apk/cache" ]
+# ARG dev_packages="openssl-dev" "pkgconf" "musl-dev" "gcc" "make" 
+# ARG apk_cache_dirs=[ "/var/cache/apk", "/etc/apk/cache" ]
 
 # Dirs
 ARG source_dir="/build/source"
@@ -54,8 +54,11 @@ ARG user="appuser"
 
 # Get deps and toolchain
 RUN apk cache sync && apk update && apk upgrade;
-RUN apk add ${dev_packages};
-RUN apk cache clean && rm -rf ${apk_cache_dirs};
+# TODO: check dockerfile grouping in vars.
+# RUN apk add ${dev_packages};
+RUN apk add "openssl-dev" "pkgconf" "musl-dev" "gcc" "make";
+# RUN apk cache clean && rm -rf ${apk_cache_dirs};
+RUN apk cache clean && rm -rf "/var/cache/apk" "/etc/apk/cache";
 
 # Switch user for sec reasons
 USER ${appuser}
@@ -73,10 +76,10 @@ WORKDIR ${source_dir}
 COPY . ${source_dir}
 
 # Build app
-RUN rustup self update
-RUN rustup update
-RUN make local
-RUN make build
+RUN rustup self update;
+RUN rustup update;
+RUN make local;
+RUN make build;
 
 # ------------------------------------------------------------------------------
 
@@ -95,7 +98,7 @@ ARG user="appuser"
 ARG statuscheck_addr="8.8.8.8"
 ARG statuscheck_count=4
 
-# TODO: var precedence and inheritance test 
+# TODO: var precedence and inheritance test.
 ARG hc_success_code=0
 ARG hc_err_code=101
 
@@ -128,7 +131,7 @@ HEALTHCHECK --interval=5m --timeout=10s --start-period=5s --retries=3 `
     # TODO: pipe status code and message output.
     CMD ping ${statuscheck_addr} -c ${statuscheck_count} `
         && exit(hc_success_code) `
-        || exit ${hc_err_code}
+        || exit ${hc_err_code};
 
 # Start app in exec mode
 ENTRYPOINT [ ${app} ]
