@@ -7,15 +7,16 @@ name: "restreamer"
 # X-Defines
 
 # Network settings
-x-network: &ports
-  expose:
-    - ${p_http}
-    - ${p_httpudp}
-    - ${p_https}
-    - ${p_rtmp}
-    - ${p_rtmpudp}
-    - ${p_api},
-    - ${p_apiudp}
+# TODO: check if usable with dotenv file.
+# x-network:
+#   expose: &ports
+#     - ${p_http}
+#     - ${p_httpudp}
+#     - ${p_https}
+#     - ${p_rtmp}
+#     - ${p_rtmpudp}
+#     - ${p_api},
+#     - ${p_apiudp}
 
 # ---
 # App containers
@@ -40,7 +41,7 @@ services:
         rustup_init_url: "https://sh.rustup.rs"
         source_url: "https://github.com/puntopunto/xiu-rndfrk.git"
         source_branch: "ci"
-        source_dir: "${buildroot}/xiu-rndfrk"
+        source_dir: "/build/src"
         app_version: "v0.6.1"
 
         # Paths
@@ -66,19 +67,27 @@ services:
       - "./ci/config:/app/config"
     user: "appuser"
     healthcheck:
-      test: ["ping", "-c", "4", "8.8.8.8"]
+      test: [ "CMD", "ping", "-c", "4", "8.8.8.8"]
       interval: 1m30s
       timeout: 30s
       retries: 5
       start_period: 30s
-    << : *ports
+    # << : *ports
+    expose:
+      - ${p_http}
+      - ${p_httpudp}
+      - ${p_https}
+      - ${p_rtmp}
+      - ${p_rtmpudp}
+      - ${p_api},
+      - ${p_apiudp}
     hostname: "streamer-00"
 
 
     networks:
       - intra
-    expose:
-      <<: *ports
+    # expose:
+      # <<: *ports
     #     ipv4_address: "172.16.100.5"
     # ports:
     #   - "55001:1935"

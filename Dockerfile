@@ -28,11 +28,6 @@ RUN apk --update-cache upgrade --no-cache `
     && rm -rf "/var/cache/apk" "/etc/apk/cache" `
     && addgroup -g "101" "appusers" `
     && adduser `
-        -u "101" `
-        -g "Special user for app debug and test" `
-        -G "appusers" `
-        "appuser" `
-    && adduser `
         -u ${uid} `
         -g "Special no-login user for app." `
         -s "/sbin/nologin" `
@@ -101,7 +96,7 @@ ARG statuscheck_addr="8.8.8.8"
 ARG statuscheck_count=4
 
 # TODO: var precedence and inheritance test 
-ARG hc_success_code = 0
+ARG hc_success_code=0
 ARG hc_err_code=101
 
 
