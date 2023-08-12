@@ -15,7 +15,7 @@ EXIT_CODE=$DEFAULT_EXIT_CODE
 
 # Set TZ and default zone
 # TODO: Move defaults to another file (logic level).
-DEFAULT_ZONE="Africa/Nairobi"
+# DEFAULT_ZONE="Africa/Nairobi"
 # CURRENT_ZONE=$DEFAULT_ZONE
 _TEST_ZONE="Europe/Moscow"
 
@@ -55,25 +55,26 @@ get_tz_settings () {
     fi;
 
     # Check errors, set exit code 
-    if [ ! $CURRENT_ZONE ] && [ $err_code -ne $($_err_0 || $_err_1) ]; then
+    if [ ! $CURRENT_ZONE ] && [ $err_code != "$($_err_0 || $_err_1)" ]; then
         exit_code=$_err_2
     fi;
 
     return $exit_code;
 }
 
+
 # Set TZ
 set_tz () {
     # Set TZ in image and container env vars
-    if [ get_tz_settings -eq $DEFAULT_EXIT_CODE ]; then
+    if [ "$(get_tz_settings)" != $DEFAULT_EXIT_CODE ]; then
         tz=$CURRENT_ZONE;
 
     fi
 
-    apk add "alpine-conf" &&
-    setup-timezone -i "${tz}" &&
-    apk del "alpine-conf" &&
-    set -e TZ="$tz" &&
+    apk add "alpine-conf";
+    setup-timezone -i "${tz}";
+    apk del "alpine-conf";
+    set -e TZ="$tz";
     EXIT_CODE=$DEFAULT_EXIT_CODE ||
     # Or catching failure
     # TODO: exception catching

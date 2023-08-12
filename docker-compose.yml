@@ -7,8 +7,8 @@ name: "restreamer"
 # X-Defines
 
 # Network settings
-x-network:
-  expose: &ports 
+x-network: &ports
+  expose:
     - ${p_http}
     - ${p_httpudp}
     - ${p_https}
@@ -44,11 +44,11 @@ services:
         app_version: "v0.6.1"
 
         # Paths
-        buildroot: "/build"
+        # buildroot: "/build"
         # TODO: check 'cargoroot' (absolute/relative, with defaults).
-        cargoroot: "~/.cargo/bin"
-        target: "/build/xiu-rndfrk/_tgt/x86_64-unknown-linux-musl/release"
-        appdir: "/app"
+        # cargoroot: "~/.cargo/bin"
+        release_dir: "/build/xiu/release"
+        app_dir: "/app"
 
         # User
         user: "appuser"
@@ -56,8 +56,8 @@ services:
 
         # Apps
         app: "xiu"
-        web: "http-server"
-        pprtmp: "pprtmp"
+        web_server: "http-server"
+        pprtmp_server: "pprtmp"
 
     # Container settings
     image: "normkd/1688557675-test01:1.0.0"
@@ -66,7 +66,7 @@ services:
       - "./ci/config:/app/config"
     user: "appuser"
     healthcheck:
-      test: ["executable", "arg"]
+      test: ["ping", "-c", "4", "8.8.8.8"]
       interval: 1m30s
       timeout: 30s
       retries: 5
