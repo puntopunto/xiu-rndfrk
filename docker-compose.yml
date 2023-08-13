@@ -69,7 +69,7 @@ services:
       timeout: 30s
       retries: 5
       start_period: 30s
-    *app-network
+    *app-network:
     hostname: "streamer-00"
 
 

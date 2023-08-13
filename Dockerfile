@@ -51,8 +51,6 @@ RUN adduser `
         -S `
         ${user};
 
-ONBUILD WORKDIR ${app_dir}
-
 # ------------------------------------------------------------------------------
 ## 3. Settings up build tools
 
@@ -174,6 +172,8 @@ COPY --link --from=builder `
 
 # Switch user
 USER ${user}
+
+# ENV PATH="$PATH:${app_dir}"
 
 # Ports
 EXPOSE ${http_port}
