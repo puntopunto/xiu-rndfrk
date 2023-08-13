@@ -3,22 +3,20 @@ name: "restreamer"
 
 ## XIU local test (no swarm)
 
-# ---
-# X-Defines
+# ------------------------------------------------------------------------------
 
 # Network settings
-# TODO: check if usable with dotenv file.
-# x-network:
-#   expose: &ports
-#     - ${p_http}
-#     - ${p_httpudp}
-#     - ${p_https}
-#     - ${p_rtmp}
-#     - ${p_rtmpudp}
-#     - ${p_api},
-#     - ${p_apiudp}
+x-app-network: &app-network
+  expose: &app-ports
+    - ${http_port}
+    - ${httpudp_port}
+    - ${https_port}
+    - ${rtmp_port}
+    - ${rtmpudp_port}
+    - ${api_port},
+    - ${apiudp_port}
 
-# ---
+# ------------------------------------------------------------------------------
 # App containers
 
 # Restremer 'pod'
@@ -31,11 +29,14 @@ services:
       target: "runner"
       args:
         # Global
-        tz: ${tz}
+        tz: "Europe/Moscow"
+        base_tz: "Africa/Niamey"
+        uid: "10001"
+        user: "appuser"
 
         # Platforms and versions
-        platform: "linux/amd64"
-        version: "latest"
+        base_platform: "linux/amd64"
+        base_version: "latest"
 
         # App and deps sources
         rustup_init_url: "https://sh.rustup.rs"
@@ -50,10 +51,6 @@ services:
         # cargoroot: "~/.cargo/bin"
         release_dir: "/build/xiu/release"
         app_dir: "/app"
-
-        # User
-        user: "appuser"
-        uid: "10001"
 
         # Apps
         app: "xiu"
@@ -72,15 +69,7 @@ services:
       timeout: 30s
       retries: 5
       start_period: 30s
-    # << : *ports
-    expose:
-      - ${p_http}
-      - ${p_httpudp}
-      - ${p_https}
-      - ${p_rtmp}
-      - ${p_rtmpudp}
-      - ${p_api},
-      - ${p_apiudp}
+    *app-network
     hostname: "streamer-00"
 
 
@@ -124,7 +113,7 @@ services:
     #   intra:
     #     ipv4_address: "172.16.120.5"
 
-# ---
+# ------------------------------------------------------------------------------
 # Pod settings
 
 # Networking
