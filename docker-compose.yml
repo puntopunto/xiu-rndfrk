@@ -30,15 +30,14 @@ services:
       args:
         # Global
         tz: "Europe/Moscow"
-        base_tz: "Africa/Niamey"
         uid: "10001"
         user: "appuser"
 
-        # Platforms and versions
+        ## Platforms and versions
         base_platform: "linux/amd64"
         base_version: "latest"
 
-        # App and deps sources
+        ## App and deps sources
         rustup_init_url: "https://sh.rustup.rs"
         source_url: "https://github.com/puntopunto/xiu-rndfrk.git"
         source_branch: "ci"
@@ -69,7 +68,7 @@ services:
       timeout: 30s
       retries: 5
       start_period: 30s
-    *app-network:
+    <<: app-network
     hostname: "streamer-00"
 
 
