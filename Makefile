@@ -18,10 +18,13 @@ clean:
 	cargo clean
 
 build:
-	cargo build
+	cargo build --quiet \
+		--target-dir "/build/target/artifacts" \
+		--out-dir "/build/target/release"
 
 build-musl:
 	cargo build --target "x86_64-unknown-linux-musl" --release
 
 build-default-platform:
 	cargo build --release
+
