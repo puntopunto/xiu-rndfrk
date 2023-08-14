@@ -53,7 +53,8 @@ RUN apk cache clean && rm -rf ${apk_cache_dirs};
 
 ### App user
 # TODO: check multiply 'ONBUILD' steps - image size, layers count, etc.
-ONBUILD RUN addgroup ${appusers_group} && adduser `
+ONBUILD RUN addgroup ${appusers_group} `
+    && adduser `
     -G ${appusers_group} `
     -g "Special no-login user for app." `
     -s "/sbin/nologin" `
@@ -93,10 +94,12 @@ RUN apk cache clean && rm -rf ${apk_cache_dirs};
 
 #### On-build instruction set
 # - Builders group
-ONBUILD RUN groupadd ${appbuilders_group};
+ONBUILD RUN addgroup ${appbuilders_group};
 
 # - Default builder user
-ONBUILD RUN useradd ${appbuilder} -G ${appbuilders_group}; 
+ONBUILD RUN adduser ${appbuilder} `
+    -G ${appbuilders_group} `
+    -g "Special user for build app";
 
 # ------------------------------------------------------------------------------
 ## 4. Build app
@@ -109,24 +112,24 @@ FROM toolset as builder
 ARG buildroot="/build"
 ARG source_dir="${buildroot}/source"
 ARG target_dir="${buildroot}/target"
+# ARG artifacts="${target_dir}/artifacts"
 ARG release_dir="${target_dir}/release"
-ARG artifacts="${target_dir}/artifacts"
 
 # - Toolchain install tools
 ARG rustup_init="${source_dir}/ci/scripts/common/rustup-init.sh"
 
 # - Rustup install args
 # TODO: check args is accessible for installer during installong 'Rust'.
-ARG RUSTUP_HOME
-ARG RUSTUP_TOOLCHAIN 
-ARG RUSTUP_DIST_SERVER
-ARG RUSTUP_DIST_ROOT
-ARG RUSTUP_UPDATE_ROOT
-ARG RUSTUP_IO_THREADS 
-ARG RUSTUP_TRACE_DIR
-ARG RUSTUP_UNPACK_RAM
-ARG RUSTUP_NO_BACKTRACE
-ARG RUSTUP_PERMIT_COPY_RENAME
+# ARG RUSTUP_HOME
+# ARG RUSTUP_TOOLCHAIN 
+# ARG RUSTUP_DIST_SERVER
+# ARG RUSTUP_DIST_ROOT
+# ARG RUSTUP_UPDATE_ROOT
+# ARG RUSTUP_IO_THREADS 
+# ARG RUSTUP_TRACE_DIR
+# ARG RUSTUP_UNPACK_RAM
+# ARG RUSTUP_NO_BACKTRACE
+# ARG RUSTUP_PERMIT_COPY_RENAME
 
 ### Switch user for sec reasons
 USER ${appbuilder}

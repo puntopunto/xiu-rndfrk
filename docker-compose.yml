@@ -30,7 +30,6 @@ services:
       args:
         # Global
         tz: "Europe/Moscow"
-        uid: "10001"
         user: "appuser"
 
         ## Platforms and versions
@@ -39,9 +38,10 @@ services:
 
         ## App and deps sources
         rustup_init_url: "https://sh.rustup.rs"
-        source_url: "https://github.com/puntopunto/xiu-rndfrk.git"
-        source_branch: "ci"
-        source_dir: "/build/src"
+        rustup_init: "/build/source/ci/scripts/common/rustup-init.sh"
+        # source_url: "https://github.com/puntopunto/xiu-rndfrk.git"
+        # source_branch: "ci"
+        # source_dir: "/build/src"
         app_version: "v0.6.1"
 
         # Paths
@@ -62,8 +62,10 @@ services:
     volumes:
       - "./ci/config:/app/config"
     user: "appuser"
+    environment:
+      TZ: "Europe/Moscow"
     healthcheck:
-      test: [ "CMD", "ping", "-c", "4", "8.8.8.8"]
+      test: ["CMD", "ping", "-c", "4", "8.8.8.8"]
       interval: 1m30s
       timeout: 30s
       retries: 5
