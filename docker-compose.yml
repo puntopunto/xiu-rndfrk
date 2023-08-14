@@ -63,14 +63,14 @@ services:
       - "./ci/config:/app/config"
     user: "appuser"
     environment:
-      TZ: "Europe/Moscow"
+      TZ: "Asia/Tokyo"
     healthcheck:
       test: ["CMD", "ping", "-c", "4", "8.8.8.8"]
       interval: 1m30s
       timeout: 30s
       retries: 5
       start_period: 30s
-    <<: app-network
+    <<: *app-ports
     hostname: "streamer-00"
 
 

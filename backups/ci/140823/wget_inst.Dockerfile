@@ -41,7 +41,7 @@ FROM --platform=${base_platform} alpine:${base_platform_version} AS base
 
 ### Args
 # - System-related
-# TODO: check glob args
+# TODO: check 'tz' glob args.
 ARG tz='Africa/Algiers'
 
 ### Base setup
@@ -53,8 +53,7 @@ RUN apk cache clean && rm -rf ${apk_cache_dirs};
 
 ### App user
 # TODO: check multiply 'ONBUILD' steps - image size, layers count, etc.
-ONBUILD RUN addgroup ${appusers_group} `
-    && adduser `
+ONBUILD RUN addgroup ${appusers_group} && adduser `
     -G ${appusers_group} `
     -g "Special no-login user for app." `
     -s "/sbin/nologin" `
@@ -79,16 +78,16 @@ ARG dev_packages='`
     musl-dev `
     gcc `
     make'
-ARG apk_cache_dirs='`
-    /var/cache/apk `
-    /etc/apk/cache'
+# ARG apk_cache_dirs='`
+#     /var/cache/apk `
+#     /etc/apk/cache'
 
 # - App builder user/group
 ARG appbuilder="builder"
 ARG appbuilders_group="builders"
 
 #### Get tools
-RUN apk cache sync && apk update && apk upgrade;
+RUN apk --update-cache upgrade --no-cache;
 RUN apk add ${dev_packages};
 RUN apk cache clean && rm -rf ${apk_cache_dirs};
 

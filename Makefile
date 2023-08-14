@@ -26,8 +26,8 @@ build:
 		--target-dir "/build/target" \
 		--out-dir "/build/release"
 
-build-musl:
+test-build-musl:
 	cargo build --target "x86_64-unknown-linux-musl" --release
 
-build-default-platform:
+test-build-default-platform:
 	cargo build --release

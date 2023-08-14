@@ -1,4 +1,4 @@
-#!/bin/env sh
+#! /usr/bin/env sh
 # shellcheck shell=dash
 
 # This is just a little script that can be downloaded from the internet to
