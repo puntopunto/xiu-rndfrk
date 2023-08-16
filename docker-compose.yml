@@ -73,8 +73,6 @@ services:
       start_period: "5s"
     <<: *app-ports
     hostname: "streamer-00"
-
-
     networks:
       - intra
     # expose:
