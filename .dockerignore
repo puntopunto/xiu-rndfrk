@@ -4,7 +4,7 @@
 # Exclude all except app sources
 **/*
 !application
-!ci/scripts
+!ci
 !confs
 !library
 !protocol

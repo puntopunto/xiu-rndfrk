@@ -31,13 +31,14 @@ services:
         # Global
         tz: "Europe/Moscow"
         user: "appuser"
+        app_group: "appusers"
 
         ## Platforms and versions
         base_platform: "linux/amd64"
         base_version: "latest"
 
         ## App and deps sources
-        rustup_init_url: "https://sh.rustup.rs"
+        # rustup_init_url: "https://sh.rustup.rs"
         rustup_init: "/build/source/ci/scripts/common/rustup-init.sh"
         # source_url: "https://github.com/puntopunto/xiu-rndfrk.git"
         # source_branch: "ci"
@@ -66,10 +67,10 @@ services:
       TZ: "Asia/Tokyo"
     healthcheck:
       test: ["CMD", "ping", "-c", "4", "8.8.8.8"]
-      interval: 1m30s
-      timeout: 30s
-      retries: 5
-      start_period: 30s
+      interval: "5m"
+      timeout: "30s"
+      retries: 3
+      start_period: "5s"
     <<: *app-ports
     hostname: "streamer-00"
 

@@ -13,8 +13,7 @@
 #
 # TODO: readme.
 # ------------------------------------------------------------------------------
-## 1. Pre-flight setting
-
+## 1. Pre-build setting
 ### Global args
 # - Date and time
 ARG tz="Europe/Moscow"
@@ -22,7 +21,7 @@ ARG tz="Europe/Moscow"
 # - Default app user/group
 # TODO: check and use (if exist) 'groupadd' and 'useradd' 
 ARG user="appuser"
-ARG appusers_group="appusers"
+ARG group_appusers="appusers"
 
 # - Packages cache
 ARG apk_cache1="/var/cache/apk"
@@ -30,7 +29,6 @@ ARG apk_cache2="/etc/apk/cache"
 
 # ------------------------------------------------------------------------------
 ## 2. Setting up base
-
 ### Platform args
 ARG base_platform="linux/amd64"
 ARG base_platform_version="latest"
@@ -41,41 +39,39 @@ FROM --platform=${base_platform} alpine:${base_platform_version} AS base
 ### Args
 # - System-related
 # TODO: check 'tz' glob args.
+ARG tz_pack="alpine-conf"
 ARG tz='Africa/Algiers'
+
+# Groups and users settings (only 1 for now)
+ARG user_gecos='Special no-login user for app.'
+ARG user_shell="/sbin/nologin"
+ARG user_home="/nonexistent"
 
 ### Base setup
 # TODO: check for  smaller layers qty, if possible.
-RUN apk --no-interactive --no-progress --update-cache --quiet upgrade --latest;
-RUN apk --no-interactive --no-progress add --latest "alpine-conf"
-##  setup-timezone -i ${tz} `
-#   && apk -no-interactive --no-progress del --rdepends "alpine-conf";
-# RUN apk cache clean && rm -rf ${apk_cache1} ${apk_cache2};
+RUN apk --quiet --no-interactive --no-progress --update-cache upgrade --latest;
+RUN apk --quiet --no-interactive --no-progress add --latest ${tz_pack}
+RUN setup-timezone -i ${tz}
+RUN apk cache clean && rm -rf ${apk_cache1} ${apk_cache2};
 
-### App user
-
+### App user for next stages.
 # TODO: check multiply 'ONBUILD' steps - image size, layers count, etc.
-
-ONBUILD RUN addgroup ${appusers_group} && adduser `
-    -G ${appusers_group} `
-    -g "Special no-login user for app." `
-    -s "/sbin/nologin" `
-    -h "/nonexistent" `
+ONBUILD RUN addgroup ${group_appusers} && adduser `
+    -G ${group_appusers} `
+    -g ${user_gecos} `
+    -s ${user_shell} `
+    -h ${user_home} `
     -H `
     -D `
     -S `
-    ${user}; `
-    apk --no-interactive --no-progress add --latest "alpine-conf" `
-    && setup-timezone -i ${tz} `
-    && apk -no-interactive --no-progress del --rdepends "alpine-conf" `
-    && apk cache clean && rm -rf ${apk_cache1} ${apk_cache2};
+    ${user};
 
 # ------------------------------------------------------------------------------
 ## 3. Settings up build tools
-
 ### Toolset image
 FROM base AS toolset
 
-#### Args
+### Args
 # - Toolchain and deps
 ARG rustup_init_url="https://sh.rustup.rs"
 ARG dev_packages='openssl-dev pkgconf musl-dev gcc make'
@@ -87,7 +83,8 @@ ARG dev_packages='openssl-dev pkgconf musl-dev gcc make'
 
 # - App builder user/group
 ARG appbuilder="builder"
-ARG appbuilders_group="builders"
+ARG group_build="builders"
+ARG appbuilder_gecos="Special user for building app."
 
 #### Get tools
 RUN apk --update-cache upgrade --no-cache;
@@ -96,31 +93,37 @@ RUN apk cache clean && rm -rf ${apk_cache_dirs};
 
 #### On-build instruction set
 # - Builders group
-ONBUILD RUN addgroup ${appbuilders_group};
+ONBUILD RUN addgroup ${group_build};
 
 # - Default builder user
 ONBUILD RUN adduser ${appbuilder} `
-    -G ${appbuilders_group} `
-    -g "Special user for build app";
+    -G ${group_build} `
+    -g ${appbuilder_gecos};
 
 # ------------------------------------------------------------------------------
 ## 4. Build app
+# TODO: switch to net install? Git 'clone' or copy source / mount volume?
 
 ### Builder image
 FROM toolset as builder
 
 #### Args
+# - Source repo
+ARG repo="."
+
 # - Dirs
 ARG buildroot="/build"
 ARG source_dir="${buildroot}/source"
 ARG target_dir="${buildroot}/target"
-# ARG artifacts="${target_dir}/artifacts"
-ARG release_dir="${target_dir}/release"
+ARG release_dir="${buildroot}/release"
 
-# - Toolchain install tools
+# - Installer tools
 ARG rustup_init="${source_dir}/ci/scripts/common/rustup-init.sh"
 
-# - Rustup install args
+# - Source files permissions
+ARG builddir_perms=750
+
+# - Rustup-init env args
 # TODO: check args is accessible for installer during installong 'Rust'.
 # ARG RUSTUP_HOME
 # ARG RUSTUP_TOOLCHAIN 
@@ -136,22 +139,25 @@ ARG rustup_init="${source_dir}/ci/scripts/common/rustup-init.sh"
 ### Switch user for sec reasons
 USER ${appbuilder}
 
-### Copy source
-WORKDIR ${source_dir}
-COPY . .
-
 ### Launch local rustup-init
-# TODO: auto-update 'rustup-init'
+# TODO: auto-update 'rustup-init'.
+# TODO: switch to script?
 RUN ${rustup_init} `
     --quiet `
     -y `
     --default-host "x86_64-unknown-linux-musl" `
     --default-toolchain "stable-x86_64-unknown-linux-musl" `
     --profile "minimal" `
-    --component "cargo";`
-;
+    --component "cargo";
 
-# - Build app
+### Copy source
+WORKDIR ${source_dir}
+# TODO: select 'COPY' or 'ADD'.
+ADD --chown=${appbuilder}:{group_build} `
+    --chmod=${builddir_perms} `
+    ${repo} .
+
+### Build app
 RUN rustup self update;
 RUN rustup update;
 RUN make local;
@@ -163,47 +169,79 @@ RUN make build;
 # TODO: add 'CMD' instruction for config in mounted volume. 
 
 ### Runner image
-FROM base AS runner
+FROM --platform=${base_platform} alpine:${base_platform_version} AS runner
 
 ### Args
 # - Installer
+ARG mount_target="/mnt/distr"
 ARG target_stage="builder"
 ARG release_dir="/build/target/release"
 ARG app_dir="/app"
 ARG app="xiu"
 ARG web_server="http-server"
 ARG pprtmp_server="pprtmp"
-# TODO: check 'user' arg - may no need here.
-# ARG user="appuser"
 
-# - Ports
+# - Protocols/Ports
 ARG http_port=80
-ARG httpudp_port="80/udp"
+ARG httpudp_port=80/udp
 ARG https_port=443
 ARG rtmp_port=1935
-ARG rtmpudp_port="1935/udp"
+ARG rtmpudp_port=1935/udp
 ARG api_port=8000
-ARG apiudp_port="8000/udp"
+ARG apiudp_port=8000/udp
+
+# - Users/groups
+ARG app_owner="root"
+
+# - App files permission
+ARG app_perm=750
 
 # - Healthcheck
-ARG statuscheck_addr="8.8.8.8"
-ARG statuscheck_count=4
-# TODO: var precedence and inheritance test.
-ARG hc_exit_code=0
-ARG hc_errcode_hook=${@}
+ARG prober="ping"
+ARG probe_addr="8.8.8.8"
+ARG probe_count=5
+ARG probe_deadline=10
+ARG probe_timeout=15
 
 ### Main workload env
 ENV PATH="${app_dir}:$PATH"
 ENV APP=${app}
 
-### Copy app
-# TODO: chmod/chown to 'root' and RO-access for 'appusers' group.
+# CWD
 WORKDIR ${app_dir}
-COPY --link --from=${target_stage} `
-    "${release_dir}/${app}", `
-    "${release_dir}/${web_server}", `
-    "${release_dir}/${pprtmp_server}" `
-        ./
+
+### Sys settings
+RUN --mount=type=bind,target=${mount_target},source=${release_dir},from=${target_stage},rw `
+    addgroup ${group_appusers} `
+    && adduser `
+        -G ${group_appusers} `
+        -g ${user_gecos} `
+        -s ${user_shell} `
+        -h ${user_home} `
+        -H `
+        -D `
+        -S `
+        ${user}; `
+    apk --quiet --no-interactive --no-progress --update-cache `
+        upgrade --latest; `
+    apk --no-interactive --no-progress add --latest "alpine-conf" `
+    && setup-timezone -i ${tz} `
+    && apk cache clean `
+    && rm -rf ${apk_cache1} ${apk_cache2}; `
+    mv ${mount_target} . ; `
+    chown -R ${app_owner}:${group_appusers} ${app_dir}; `
+    chmod -R ${app_perm} ${app_dir};
+
+### Copy app
+# COPY --link --from=${target_stage} `
+#     --chown=${app_owner}:${group_appusers} `
+#     --chmod=${app_perm} `
+#     "${release_dir}/${app}", `
+#     "${release_dir}/${web_server}", `
+#     "${release_dir}/${pprtmp_server}" `
+#         ./
+
+# VOLUME ["./ci/config"]
 
 ### Ports
 EXPOSE ${http_port}
@@ -216,11 +254,19 @@ EXPOSE ${apiudp_port}
 
 ### Health-check
 # TODO: check 'HEALTHCHECK' args is usable with vars.
-HEALTHCHECK --interval=5m --timeout=10s --start-period=5s --retries=3 `
+HEALTHCHECK --interval=5m --timeout=30s --start-period=5s --retries=3 `
     # TODO: pipe status code and message output.
-    CMD ping ${statuscheck_addr} -c ${statuscheck_count} `
-    && exit(hc_exit_code) || exit (hc_errcode_hook);
+    CMD ${prober} `
+        -q `
+        -c ${probe_count} `
+        -W ${probe_timeout} `
+        -w ${probe_deadline} `
+            ${probe_addr}; `
+        exit "$?";
 
 ### Switch user and start app
 USER ${user}
 ENTRYPOINT [ ${app} ]
+
+# - Args for default start
+CMD [ "-c" "ci/config/config.toml" ]
