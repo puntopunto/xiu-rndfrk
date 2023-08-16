@@ -81,7 +81,7 @@ services:
     # ports:
     #   - "55001:1935"
     #   - "1935:1935/udp"
-    #   - "8000:8000" 
+    #   - "8000:8000"
     #   - "8000:8000/udp"
     # extra_hosts:
     #   - "host.docker.internal:host-gateway"

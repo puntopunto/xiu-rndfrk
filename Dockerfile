@@ -244,7 +244,7 @@ ENV app_config=${default_app_config}
 WORKDIR ${app_dir}
 
 #### Sys settings
-RUN --mount=type=bind,target=${release_mount},source=${release_dir},from=${release_stage},rw `
+RUN --mount=type=bind,target=${release_mount},source=${release_dir},from="builder",rw `
     # addgroup ${users} `
     # && adduser `
     adduser ${user} `
