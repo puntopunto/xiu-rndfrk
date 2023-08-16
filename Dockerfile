@@ -29,13 +29,14 @@ ARG apk_cache2="/etc/apk/cache"
 
 # ------------------------------------------------------------------------------
 ## 2. Setting up base
-### Platform args
-ARG base_platform="alpine"
+### Base platform args
 ARG base_arch="linux/amd64"
+ARG base_platform="alpine"
 ARG base_platform_version="latest"
 
 ### Base image
-FROM --platform=${base_arch} ${base_platform}:${base_platform_version} AS base
+FROM --platform=${base_arch} `
+    ${base_platform}:${base_platform_version} AS base
 
 ### Args
 # - System-related
@@ -180,10 +181,16 @@ RUN make build;
 # ------------------------------------------------------------------------------
 ## 5. Run app
 # TODO: mount volume with workload configs and check size/layering.
-# TODO: add 'CMD' instruction for config in mounted volume. 
+# TODO: add 'CMD' instruction for config in mounted volume.
+
+### Run platform args
+ARG runner_arch="linux/amd64"
+ARG runner_platform="alpine"
+ARG runner_platform_version="latest"
 
 ### Runner image
-FROM --platform=${base_arch} alpine:${base_platform_version} AS runner
+FROM --platform=${runner_arch} `
+    ${runner_platform}:${runner_platform_version} AS runner
 
 ### Args
 # - Installer
