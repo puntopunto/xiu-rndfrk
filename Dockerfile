@@ -38,25 +38,25 @@ ARG base_platform_version="latest"
 FROM --platform=${base_arch} `
     ${base_platform}:${base_platform_version} AS base
 
-### Args
+#### Args
 # - System-related
 # TODO: check 'tz' external args.
 ARG tz_pack="alpine-conf"
 ARG tz='Africa/Algiers'
 
-# Groups and users settings (only 1 for now)
+# - Groups and users settings (only 1 for now)
 ARG user_gecos='Special no-login user for app.'
 ARG user_shell="/sbin/nologin"
 ARG user_home="/nonexistent"
 
-### Base setup
+#### Base setup
 # TODO: check for  smaller layers qty, if possible.
 RUN apk --quiet --no-interactive --no-progress --update-cache upgrade --latest;
 RUN apk --quiet --no-interactive --no-progress add --latest ${tz_pack}
 RUN setup-timezone -i ${tz}
 RUN apk cache clean && rm -rf ${apk_cache1} ${apk_cache2};
 
-### App user for next stages.
+#### App user for next stages.
 # TODO: check multiply 'ONBUILD' steps - image size, layers count, etc.
 # ONBUILD RUN addgroup ${users} && adduser `
 #     -G ${users} `
@@ -90,7 +90,7 @@ FROM base AS toolset
 # ARG dev_packages='openssl-dev pkgconf musl-dev gcc make'
 ARG dev_packages='pkgconf musl-dev gcc make'
 
-#  Apk cache
+# - Apk cache
 # TODO: check if global ok.
 # ARG apk_cache1="/var/cache/apk"
 # ARG apk_cache2="/etc/apk/cache"
@@ -151,10 +151,10 @@ ARG builddir_perms=750
 # ARG RUSTUP_NO_BACKTRACE
 # ARG RUSTUP_PERMIT_COPY_RENAME
 
-### Switch user for sec reasons
+#### Switch user for sec reasons
 USER ${builder}
 
-### Launch local rustup-init
+#### Launch local rustup-init
 # TODO: auto-update 'rustup-init'.
 # TODO: switch to script?
 RUN ${selected_rust_installer} `
@@ -165,14 +165,14 @@ RUN ${selected_rust_installer} `
     --profile "minimal" `
     --component "cargo";
 
-### Copy source
+#### Copy source
 # TODO: select 'COPY' or 'ADD'.
 WORKDIR ${source_dir}
 COPY --chown=${builder}:{builders} `
     --chmod=${builddir_perms} `
     ${repo} .
 
-### Build app
+#### Build app
 RUN rustup self update;
 RUN rustup update;
 RUN make local;
@@ -192,7 +192,7 @@ ARG runner_platform_version="latest"
 FROM --platform=${runner_arch} `
     ${runner_platform}:${runner_platform_version} AS runner
 
-### Args
+#### Args
 # - Installer
 ARG runner_sysconf="alpine-conf"
 ARG release_mount="/mnt/distr"
@@ -228,16 +228,16 @@ ARG rtmpudp_port="1935/udp"
 ARG api_port=8000
 ARG apiudp_port="8000/udp"
 
-### Main workload env
+#### Main workload env
 ENV TZ=${tz}
 ENV PATH="${app_dir}:$PATH"
 ENV APP=${app}
 ENV app_config=${default_app_config}
 
-# CWD
+#### CWD
 WORKDIR ${app_dir}
 
-### Sys settings
+#### Sys settings
 RUN --mount=type=bind,target=${release_mount},source=${release_dir},from=${release_stage},rw `
     # addgroup ${users} `
     # && adduser `
@@ -258,7 +258,7 @@ RUN --mount=type=bind,target=${release_mount},source=${release_dir},from=${relea
     chown -R ${app_owner}:${users} . ; `
     chmod -R ${app_dir_perm} ${app_dir};
 
-### Copy app
+#### Copy app
 # COPY --link --from=${target_stage} `
 #     --chown=${app_owner}:${users} `
 #     --chmod=${app_perm} `
@@ -269,7 +269,7 @@ RUN --mount=type=bind,target=${release_mount},source=${release_dir},from=${relea
 
 # VOLUME ["./ci/config"]
 
-### Ports
+#### Ports
 EXPOSE ${http_port}
 EXPOSE ${httpudp_port}
 EXPOSE ${https_port}
@@ -278,7 +278,7 @@ EXPOSE ${rtmpudp_port}
 EXPOSE ${api_port}
 EXPOSE ${apiudp_port}
 
-### Health-check
+#### Health-check
 # TODO: check 'HEALTHCHECK' args is usable with vars.
 HEALTHCHECK --interval=5m --timeout=30s --start-period=5s --retries=3 `
     # TODO: pipe status code and message output.
@@ -290,7 +290,7 @@ HEALTHCHECK --interval=5m --timeout=30s --start-period=5s --retries=3 `
             ${probe_addr}; `
         exit "$?";
 
-### Switch user and start app
+#### Switch user and start app
 USER ${user}
 ENTRYPOINT [ ${app} ]
 
