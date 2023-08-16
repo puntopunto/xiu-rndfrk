@@ -135,6 +135,12 @@ ARG release_dir="${buildroot}/release"
 ARG rustup_init="ci/scripts/common/rustup-init.sh"
 ARG selected_rust_installer="${source_dir}/${rustup_init}"
 
+# - rust install params
+ARG target_host="x86_64-unknown-linux-musl"
+ARG target_toolchain="x86_64-unknown-linux-musl"
+ARG target_profile="minimal"
+ARG additional_component="cargo"
+
 # - Source files permissions
 ARG builddir_perms=750
 
@@ -158,12 +164,12 @@ USER ${builder}
 # TODO: auto-update 'rustup-init'.
 # TODO: switch to script?
 RUN ${selected_rust_installer} `
-    --quiet `
-    -y `
-    --default-host "x86_64-unknown-linux-musl" `
-    --default-toolchain "stable-x86_64-unknown-linux-musl" `
-    --profile "minimal" `
-    --component "cargo";
+        --quiet `
+        -y `
+        --default-host ${target_host} `
+        --default-toolchain ${target_toolchain} `
+        --profile ${target_profile} `
+        --component ${additional_component};
 
 #### Copy source
 # TODO: select 'COPY' or 'ADD'.
