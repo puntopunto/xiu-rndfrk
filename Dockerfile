@@ -195,8 +195,7 @@ ARG runner_platform="alpine"
 ARG runner_platform_version="latest"
 
 ### Runner image
-FROM --platform=${runner_arch} `
-    ${runner_platform}:${runner_platform_version} AS runner
+FROM --platform="linux/amd64" alpine:${runner_platform_version} AS runner
 
 #### Args
 # - Installer
