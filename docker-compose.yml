@@ -27,35 +27,35 @@ services:
     build:
       context: "."
       target: "runner"
-      args:
-        # Global
-        tz: "Europe/Moscow"
-        user: "appuser"
-        app_group: "appusers"
+      # args:
+        # # Global
+        # tz: "Europe/Moscow"
+        # user: "appuser"
+        # app_group: "appusers"
 
-        ## Platforms and versions
-        base_platform: "linux/amd64"
-        base_version: "latest"
+        # ## Platforms and versions
+        # bp_arch: "linux/amd64"
+        # bp_version: "latest"
 
-        ## App and deps sources
-        # rustup_init_url: "https://sh.rustup.rs"
-        rustup_init: "/build/source/ci/scripts/common/rustup-init.sh"
-        # source_url: "https://github.com/puntopunto/xiu-rndfrk.git"
-        # source_branch: "ci"
-        # source_dir: "/build/src"
-        app_version: "v0.7.0"
+        # ## App and deps sources
+        # # rustup_init_url: "https://sh.rustup.rs"
+        # rustup_init: "/build/source/ci/scripts/common/rustup-init.sh"
+        # # source_url: "https://github.com/puntopunto/xiu-rndfrk.git"
+        # # source_branch: "ci"
+        # # source_dir: "/build/src"
+        # app_version: "v0.7.0"
 
-        # Paths
-        # buildroot: "/build"
-        # TODO: check 'cargoroot' (absolute/relative, with defaults).
-        # cargoroot: "~/.cargo/bin"
-        release_dir: "/build/xiu/release"
-        app_dir: "/app"
+        # # Paths
+        # # buildroot: "/build"
+        # # TODO: check 'cargoroot' (absolute/relative, with defaults).
+        # # cargoroot: "~/.cargo/bin"
+        # release_dir: "/build/xiu/release"
+        # app_dir: "/app"
 
-        # Apps
-        app: "xiu"
-        web_server: "http-server"
-        pprtmp_server: "pprtmp"
+        # # Apps
+        # app: "xiu"
+        # web_server: "http-server"
+        # pprtmp_server: "pprtmp"
 
     # Container settings
     image: "normkd/1688557675-test01:1.0.0"

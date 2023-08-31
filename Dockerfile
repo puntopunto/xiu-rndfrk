@@ -7,11 +7,13 @@
 #
 # Test image
 # ---
-# # TODO: improve header (add info, pic, etc.) and add more 'MD' formatting.  
+# # TODO: improve header (add info, pic, etc.) and add more 'MD' formatting.
+#
 # ------------------------------------------------------------------------------
 # ## README
 #
 # TODO: readme.
+#
 # ------------------------------------------------------------------------------
 ## 1. Pre-build setting
 ### Global args
@@ -27,29 +29,36 @@ ARG users="appusers"
 ARG apk_cache1="/var/cache/apk"
 ARG apk_cache2="/etc/apk/cache"
 
+### Setup build stages
+#### Base platform args
+ARG bp_arch="linux/amd64"
+ARG bp_platform="alpine"
+ARG bp_version="latest"
+
+#### Run platform args
+ARG rp_arch="linux/amd64"
+ARG rp_platform="alpine"
+ARG rp_version="latest"
+
 # ------------------------------------------------------------------------------
-## 2. Setting up base
-### Base platform args
-ARG base_arch="linux/amd64"
-ARG base_platform="alpine"
-ARG base_platform_version="latest"
 
-### Base image
-FROM --platform=${base_arch} `
-    ${base_platform}:${base_platform_version} AS base
+## 2. Base image
+#
+# TODO: select 'ONBUILD' invariants.
+FROM --platform=${bp_arch} ${bp_platform}:${bp_version} AS base
 
-#### Args
-# - System-related
+### Args
+#### System-related
 # TODO: check 'tz' external args.
 ARG tz_pack="alpine-conf"
 ARG tz='Africa/Algiers'
 
-# - Groups and users settings (only 1 for now)
+#### Groups and users settings (only 1 for now)
 ARG user_gecos='Special no-login user for app.'
 ARG user_shell="/sbin/nologin"
 ARG user_home="/nonexistent"
 
-#### Base setup
+### Base setup
 # TODO: check for  smaller layers qty, if possible.
 RUN apk --quiet --no-interactive --no-progress --update-cache upgrade --latest;
 RUN apk --quiet --no-interactive --no-progress add --latest ${tz_pack}
@@ -68,7 +77,7 @@ RUN apk cache clean && rm -rf ${apk_cache1} ${apk_cache2};
 #     -S `
 #     ${user};
 
-# TODO: check 'addgroup' utility reasons for use.
+# # TODO: check 'addgroup' utility reasons for use.
 ONBUILD RUN adduser `
     -G ${users} `
     -g ${user_gecos} `
@@ -80,9 +89,13 @@ ONBUILD RUN adduser `
     ${user};
 
 # ------------------------------------------------------------------------------
+
 ## 3. Settings up build tools
+#
+# Additional env vars for 'rustup' and 'cargo build' can be added as 'ARGs'. 
+# TODO: switch to net install? Git 'clone' or copy source / mount volume?
 ### Toolset image
-FROM base AS toolset
+FROM base AS builder
 
 ### Args
 # - Toolchain and deps
@@ -95,66 +108,25 @@ ARG dev_packages='pkgconf musl-dev gcc make'
 # ARG apk_cache1="/var/cache/apk"
 # ARG apk_cache2="/etc/apk/cache"
 
-# - App builder user/group
-ARG builder="builder"
-ARG builders="builders"
-ARG builder_gecos="Special user for building app."
-
-#### Get tools
-RUN apk --update-cache upgrade --no-cache;
-RUN apk add ${dev_packages};
-RUN apk cache clean && rm -rf ${apk_cache_dirs};
-
-#### On-build instruction set
-# - Builders group
-# ONBUILD RUN addgroup ${builders};
-
-# - Default builder user
-ONBUILD RUN adduser ${builder} `
-    -G ${builders} `
-    -g ${builder_gecos};
-
-# ------------------------------------------------------------------------------
-## 4. Build app
-# TODO: switch to net install? Git 'clone' or copy source / mount volume?
-
-### Builder image
-FROM toolset as builder
-
-#### Args
-# - Source repo
-ARG repo .
-
 # - Dirs
+# No roots.
 ARG buildroot="build"
 ARG source_dir="source"
 ARG target_dir="target"
 ARG release_dir="release"
 
 # - Installer tools
+# '/source' is root.
 ARG rustup_init="ci/scripts/common/rustup-init.sh"
 
 # - rust install params
 ARG target_host="x86_64-unknown-linux-musl"
 ARG target_profile="minimal"
-ARG additional_component="cargo"
-
-# - Source files permissions
-ARG builddir_perms=750
+ARG additional_component_1="cargo"
 
 # - Rustup-init env args
 # TODO: check args is accessible for installer during installong 'Rust'.
-# ARG RUSTUP_HOME="$HOME/.rustup"
-# ARG CARGO_HOME="$HOME/.cargo"
 ARG RUSTUP_TOOLCHAIN="x86_64-unknown-linux-musl"
-# ARG RUSTUP_DIST_SERVER
-# ARG RUSTUP_DIST_ROOT
-# ARG RUSTUP_UPDATE_ROOT
-# ARG RUSTUP_IO_THREADS 
-# ARG RUSTUP_TRACE_DIR
-# ARG RUSTUP_UNPACK_RAM
-# ARG RUSTUP_NO_BACKTRACE
-# ARG RUSTUP_PERMIT_COPY_RENAME
 
 # - Cargo build env
 ARG CARGO_MANIFEST_DIR .
@@ -162,6 +134,11 @@ ARG CARGO_BUILD_TARGET "x86_64-unknown-linux-musl"
 ARG CARGO_BUILD_TARGET_DIR "target"
 ARG OUT_DIR "release"
 ARG CARGO_TARGET_TMPDIR "temp"
+
+#### Get tools
+RUN apk --update-cache upgrade --no-cache;
+RUN apk add ${dev_packages};
+RUN apk cache clean && rm -rf ${apk_cache1} ${apk_cache2};
 
 #### Switch user for sec reasons
 USER ${builder}
@@ -175,33 +152,48 @@ RUN "${buildroot}/${source_dir}/${rustup_init}" `
         --default-host ${target_host} `
         --default-toolchain ${RUSTUP_TOOLCHAIN} `
         --profile ${target_profile} `
-        --component ${additional_component};
-
-#### Copy source
-# TODO: select 'COPY' or 'ADD'.
-WORKDIR ${buildroot}/${source_dir}
-COPY --chown=${builder}:{builders} `
-    --chmod=${builddir_perms} `
-    ${repo} .
-
-#### Build app
-RUN rustup self update;
-RUN rustup update;
-RUN make local;
-RUN make build --quiet --release;
+        --component ${additional_component_1};
 
 # ------------------------------------------------------------------------------
-## 5. Run app
+
+## 4. Building
+
+### Debugger image
+FROM builder as building
+
+#### Args
+# - Source repo
+ARG repo .
+
+# - Dirs
+# No roots.
+ARG buildroot="build"
+ARG source_dir="source"
+
+# - Source files permissions
+ARG builddir_perms=750
+
+# - App builder user/group
+ARG builder="root"
+ARG builders="builders"
+
+#### In debug mode we copying sources from local root.
+# TODO: select 'COPY' or 'ADD'.
+WORKDIR ${buildroot}/${source_dir}
+ADD --chown=${builder}:{builders} --chmod=${builddir_perms} ${repo} .
+
+#### Building
+USER ${builder}
+RUN make local && make build --quiet --release;
+
+# ------------------------------------------------------------------------------
+
+## 5 Run app
 # TODO: mount volume with workload configs and check size/layering.
 # TODO: add 'CMD' instruction for config in mounted volume.
 
-### Run platform args
-ARG runner_arch="linux/amd64"
-ARG runner_platform="alpine"
-ARG runner_platform_version="latest"
-
 ### Runner image
-FROM --platform="linux/amd64" alpine:${runner_platform_version} AS runner
+FROM --platform=${rp_arch} ${rp_platform}:${rp_version} AS runner
 
 #### Args
 # - Installer
@@ -216,12 +208,13 @@ ARG pprtmp_server="pprtmp"
 
 # - Users/groups
 ARG app_owner="root"
+ARG builder_gecos="Special user for building app."
 
 # - App files permission
 ARG app_dir_perm=750
 
 # -App config
-ARG default_app_config="ci/config/config.toml"
+ARG app_config="ci/config/config.toml"
 
 # - Healthcheck
 ARG prober="ping"
@@ -234,13 +227,13 @@ ARG probe_timeout=15
 ENV TZ=${tz}
 ENV PATH="${app_dir}:$PATH"
 ENV APP=${app}
-ENV app_config=${default_app_config}
+ENV app_config=${app_config}
 
 #### CWD
 WORKDIR ${app_dir}
 
 #### Sys settings
-RUN --mount=type=bind,target=${release_mount},source=${release_dir},from="builder",rw `
+RUN --mount=type=bind,target=${release_mount},source=${release_dir},from=${release_stage},rw `
     # addgroup ${users} `
     # && adduser `
     adduser ${user} `
@@ -297,4 +290,4 @@ USER ${user}
 ENTRYPOINT [ ${app} ]
 
 # - Args for default start
-CMD  [ "-c", ${default_app_config} ]
+CMD  [ "-c", ${app_config} ]
