@@ -123,21 +123,19 @@ FROM toolset as builder
 
 #### Args
 # - Source repo
-ARG repo=.
+ARG repo .
 
 # - Dirs
-ARG buildroot="/build"
-ARG source_dir="${buildroot}/source"
-ARG target_dir="${buildroot}/target"
-ARG release_dir="${buildroot}/release"
+ARG buildroot="build"
+ARG source_dir="source"
+ARG target_dir="target"
+ARG release_dir="release"
 
 # - Installer tools
 ARG rustup_init="ci/scripts/common/rustup-init.sh"
-ARG selected_rust_installer="${source_dir}/${rustup_init}"
 
 # - rust install params
 ARG target_host="x86_64-unknown-linux-musl"
-ARG target_toolchain="x86_64-unknown-linux-musl"
 ARG target_profile="minimal"
 ARG additional_component="cargo"
 
@@ -146,8 +144,9 @@ ARG builddir_perms=750
 
 # - Rustup-init env args
 # TODO: check args is accessible for installer during installong 'Rust'.
-# ARG RUSTUP_HOME
-# ARG RUSTUP_TOOLCHAIN 
+# ARG RUSTUP_HOME="$HOME/.rustup"
+# ARG CARGO_HOME="$HOME/.cargo"
+ARG RUSTUP_TOOLCHAIN="x86_64-unknown-linux-musl"
 # ARG RUSTUP_DIST_SERVER
 # ARG RUSTUP_DIST_ROOT
 # ARG RUSTUP_UPDATE_ROOT
@@ -157,23 +156,30 @@ ARG builddir_perms=750
 # ARG RUSTUP_NO_BACKTRACE
 # ARG RUSTUP_PERMIT_COPY_RENAME
 
+# - Cargo build env
+ARG CARGO_MANIFEST_DIR .
+ARG CARGO_BUILD_TARGET "x86_64-unknown-linux-musl"
+ARG CARGO_BUILD_TARGET_DIR "target"
+ARG OUT_DIR "release"
+ARG CARGO_TARGET_TMPDIR "temp"
+
 #### Switch user for sec reasons
 USER ${builder}
 
 #### Launch local rustup-init
 # TODO: auto-update 'rustup-init'.
 # TODO: switch to script?
-RUN ${selected_rust_installer} `
+RUN "${buildroot}/${source_dir}/${rustup_init}" `
         --quiet `
         -y `
         --default-host ${target_host} `
-        --default-toolchain ${target_toolchain} `
+        --default-toolchain ${RUSTUP_TOOLCHAIN} `
         --profile ${target_profile} `
         --component ${additional_component};
 
 #### Copy source
 # TODO: select 'COPY' or 'ADD'.
-WORKDIR ${source_dir}
+WORKDIR ${buildroot}/${source_dir}
 COPY --chown=${builder}:{builders} `
     --chmod=${builddir_perms} `
     ${repo} .
@@ -182,7 +188,7 @@ COPY --chown=${builder}:{builders} `
 RUN rustup self update;
 RUN rustup update;
 RUN make local;
-RUN make build;
+RUN make build --quiet --release;
 
 # ------------------------------------------------------------------------------
 ## 5. Run app
@@ -223,15 +229,6 @@ ARG probe_addr="8.8.8.8"
 ARG probe_count=5
 ARG probe_deadline=10
 ARG probe_timeout=15
-
-# - Protocols/Ports
-ARG http_port=80
-ARG httpudp_port="80/udp"
-ARG https_port=443
-ARG rtmp_port=1935
-ARG rtmpudp_port="1935/udp"
-ARG api_port=8000
-ARG apiudp_port="8000/udp"
 
 #### Main workload env
 ENV TZ=${tz}
@@ -275,13 +272,13 @@ RUN --mount=type=bind,target=${release_mount},source=${release_dir},from="builde
 # VOLUME ["./ci/config"]
 
 #### Ports
-EXPOSE ${http_port}
-EXPOSE ${httpudp_port}
-EXPOSE ${https_port}
-EXPOSE ${rtmp_port}
-EXPOSE ${rtmpudp_port}
-EXPOSE ${api_port}
-EXPOSE ${apiudp_port}
+EXPOSE 80
+EXPOSE 80/udp
+EXPOSE 443
+EXPOSE 1935
+EXPOSE 1935/udp
+EXPOSE 8000
+EXPOSE 8000/udp
 
 #### Health-check
 # TODO: check 'HEALTHCHECK' args is usable with vars.

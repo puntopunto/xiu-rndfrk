@@ -43,7 +43,7 @@ services:
         # source_url: "https://github.com/puntopunto/xiu-rndfrk.git"
         # source_branch: "ci"
         # source_dir: "/build/src"
-        app_version: "v0.6.1"
+        app_version: "v0.7.0"
 
         # Paths
         # buildroot: "/build"
@@ -66,7 +66,7 @@ services:
     environment:
       TZ: "Asia/Tokyo"
     healthcheck:
-      test: ["CMD", "ping", "-c", "4", "8.8.8.8"]
+      test: ["CMD", "ping", "-c", "4", "ya.ru"]
       interval: "5m"
       timeout: "30s"
       retries: 3
