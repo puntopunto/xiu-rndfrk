@@ -44,8 +44,8 @@ FROM --platform=${bp_arch} ${bp_platform}:${bp_version} AS base
 ARG app_pack_1="alpine-conf"
 
 # - Default app user/group
-ARG user="appuser"
-ARG users="appusers"
+ARG appuser="appuser"
+ARG appgroup="appgroup"
 
 # - Dirs
 # Package manager cache
@@ -73,15 +73,15 @@ RUN apk cache clean && rm -rf "${pm_cache_1}" "${pm_cache_2}";
 #### Necessary after-build steps
 # TODO: check 'addgroup' utility reasons for use.
 # hadolint ignore=SC2154
-ONBUILD RUN adduser `
-    -G "${users}" `
-    -g "${user_gecos}" `
-    -s "${user_shell}" `
-    -h "${user_home}" `
-    -H `
-    -D `
-    -S `
-    "${user}";
+ONBUILD RUN addgroup -S ${appgroup} && adduser `
+        -G "${appgroup}" `
+        -g "${user_gecos}" `
+        -s "${user_shell}" `
+        -h "${user_home}" `
+        -H `
+        -D `
+        -S `
+        "${appuser}";
 
 # ------------------------------------------------------------------------------
 
@@ -184,7 +184,7 @@ ARG pprtmp_server="pprtmp"
 # - Users/groups
 # Apps user 
 ARG user="appuser"
-ARG users="appusers"
+ARG appgroup="appusers"
 
 # Apps owner
 ARG app_owner="root"
@@ -213,7 +213,7 @@ WORKDIR ${app_dir}
 ### Install app
 VOLUME [ "/${app_dir}/${config_path}" ]
 COPY    --from=builder `
-        --chown="${app_owner}:${users}" `
+        --chown="${app_owner}:${appgroup}" `
         --chmod=${app_perms} `
              "${distribution}/${app}", `
              "${distribution}/${web_server}", `
