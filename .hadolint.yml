@@ -1,0 +1,36 @@
+# ---
+# title:
+#   "XIU-RndFrk CI rules"
+# author:
+#   "puntopunto"
+# date:
+#   - 02.09.2023
+# description:
+#   - "Hadolint settings for Alpine/Scratch Rust app."
+# ---
+failure-threshold: "error"
+format: "gitlab_codeclimate"
+# ignored: []             # list of rules
+label-schema:
+  author: "puntopunto"
+  contact: "usheynet@gmail.com"
+  created: 1693630401
+  version: "0.1a"
+  documentation: "https://github.com/puntopunto/xiu-rndfrk"
+  git-revision: "3bdbd9aa7af5d76a57d53d179d7ae3aff7f09a7a"
+  license: "GNU/GPLv3"
+no-color: false
+no-fail: false
+# override:               # lists of rules
+#   error: [string]
+#   warning: [string]
+#   info: [string]
+#   style: [string]     
+strict-labels: false
+disable-ignore-pragma: false
+trustedRegistries: &x-trustedRegistries
+- "docker.io"
+- "registry.gitlab.com"
+- "container-registry.cloud.yandex.net"
+- "cr.cloud.yandex.net"
+- "cr.yandex"

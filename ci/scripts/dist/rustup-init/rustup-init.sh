@@ -25,48 +25,48 @@ RUSTUP_UPDATE_ROOT="${RUSTUP_UPDATE_ROOT:-https://static.rust-lang.org/rustup}"
 # NOTICE: If you change anything here, please make the same changes in setup_mode.rs
 usage() {
     cat <<EOF
-rustup-init 1.26.0 (577bf51ae 2023-04-05)
-The installer for rustup
+    rustup-init 1.26.0 (577bf51ae 2023-04-05)
+    The installer for rustup
 
-USAGE:
-    rustup-init [OPTIONS]
+    USAGE:
+        rustup-init [OPTIONS]
 
-OPTIONS:
-    -v, --verbose
-            Enable verbose output
+    OPTIONS:
+        -v, --verbose
+                Enable verbose output
 
-    -q, --quiet
-            Disable progress output
+        -q, --quiet
+                Disable progress output
 
-    -y
-            Disable confirmation prompt.
+        -y
+                Disable confirmation prompt.
 
-        --default-host <default-host>
-            Choose a default host triple
+            --default-host <default-host>
+                Choose a default host triple
 
-        --default-toolchain <default-toolchain>
-            Choose a default toolchain to install. Use 'none' to not install any toolchains at all
+            --default-toolchain <default-toolchain>
+                Choose a default toolchain to install. Use 'none' to not install any toolchains at all
 
-        --profile <profile>
-            [default: default] [possible values: minimal, default, complete]
+            --profile <profile>
+                [default: default] [possible values: minimal, default, complete]
 
-    -c, --component <components>...
-            Component name to also install
+        -c, --component <components>...
+                Component name to also install
 
-    -t, --target <targets>...
-            Target name to also install
+        -t, --target <targets>...
+                Target name to also install
 
-        --no-update-default-toolchain
-            Don't update any existing default toolchain after install
+            --no-update-default-toolchain
+                Don't update any existing default toolchain after install
 
-        --no-modify-path
-            Don't configure the PATH environment variable
+            --no-modify-path
+                Don't configure the PATH environment variable
 
-    -h, --help
-            Print help information
+        -h, --help
+                Print help information
 
-    -V, --version
-            Print version information
+        -V, --version
+                Print version information
 EOF
 }
 
@@ -518,16 +518,16 @@ downloader() {
         get_ciphersuites_for_curl
         _ciphersuites="$RETVAL"
         if [ -n "$_ciphersuites" ]; then
-            _err=$(curl $_retry --proto '=https' --tlsv1.2 --ciphers "$_ciphersuites" --silent --show-error --fail --location "$1" --output "$2" 2>&1)
+            _err=$(curl "$_retry" --proto '=https' --tlsv1.2 --ciphers "$_ciphersuites" --silent --show-error --fail --location "$1" --output "$2" 2>&1)
             _status=$?
         else
             echo "Warning: Not enforcing strong cipher suites for TLS, this is potentially less secure"
             if ! check_help_for "$3" curl --proto --tlsv1.2; then
                 echo "Warning: Not enforcing TLS v1.2, this is potentially less secure"
-                _err=$(curl $_retry --silent --show-error --fail --location "$1" --output "$2" 2>&1)
+                _err=$(curl "$_retry" --silent --show-error --fail --location "$1" --output "$2" 2>&1)
                 _status=$?
             else
-                _err=$(curl $_retry --proto '=https' --tlsv1.2 --silent --show-error --fail --location "$1" --output "$2" 2>&1)
+                _err=$(curl "$_retry" --proto '=https' --tlsv1.2 --silent --show-error --fail --location "$1" --output "$2" 2>&1)
                 _status=$?
             fi
         fi
