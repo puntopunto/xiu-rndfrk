@@ -135,3 +135,10 @@ networks:
     #     - subnet: "172.100.100.0/24"
     #     - ip_range: "172.100.100.0/28"
     #     - gateway: "172.100.100.10"
+
+volumes:
+  streamer_config:
+    name: "streamer_config"
+    labels:
+      type: "ru.mgz.hq.lab0.cr.volume"
+      access: "ru.mgz.hq.lab0.cr.volume.access:shared"
