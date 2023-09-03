@@ -3,14 +3,15 @@
 
 # ------------------------------------------------------------------------------
 #
-# # XIU stream/restream server
+# XIU stream/restream server
 #
-# Test image
+# ~ Test image
 # ---
-# # TODO: improve header (add info, pic, etc.) and add more 'MD' formatting.
+#
+# TODO: improve header (add info, pic, etc.) and add more 'MD' formatting.
 #
 # ------------------------------------------------------------------------------
-# ## README
+# ! README
 #
 # TODO: readme.
 #
@@ -18,37 +19,36 @@
 ## Pre-build setting
 # ### Global args
 # TODO: check if it works.
-# # - Date and time
-# ARG tz="Europe/Moscow"
+# #### Date and time
+# ARG timezone="Europe/Moscow"
 
 ### Setup build stages
-# - Base platform args
+#### Base platform args
 ARG bp_arch="linux/amd64"
 ARG bp_platform="rust"
 ARG bp_version="alpine"
 
-# - Run platform args
+#### Run platform args
 ARG rp_arch="linux/amd64"
 ARG rp_platform="alpine"
 ARG rp_version="latest"
 
 # ------------------------------------------------------------------------------
 
-## 1. Base image
+## 1. Base
 # hadolint ignore=DL3029
 FROM --platform=${bp_arch} ${bp_platform}:${bp_version} AS base
 
 ### Args
-#### System-related
-# - 'pack_1' - sysconf pack with 'tzdata'
+#### System-related packs
 ARG app_pack_1="alpine-conf"
 
-# - Default app user/group
+#### Default app user/group
 ARG appuser="appuser"
 ARG appgroup="appgroup"
 
-# - Dirs
-# Package manager cache
+#### Dirs
+##### Package manager cache
 ARG pm_cache_1="/var/cache/apk"
 ARG pm_cache_2="/etc/apk/cache"
 
@@ -58,141 +58,161 @@ ARG user_shell="/sbin/nologin"
 ARG user_home="/nonexistent"
 
 #### Builder env
-ARG tz="Europe/Moscow"
+ARG timezone="Europe/Moscow"
 
 ### Base setup
 # TODO: check for smaller layers qty, if possible.
 # hadolint ignore=DL3018
-RUN apk --quiet --no-interactive --no-progress --no-cache `
-        upgrade --latest; `
-    apk --quiet --no-interactive --no-progress --no-cache `
-        add --latest "${app_pack_1}";
-RUN setup-timezone -i "${tz}";
-RUN apk cache clean && rm -rf "${pm_cache_1}" "${pm_cache_2}";
+RUN <<EOF
+# Package manager settings
+alias pkgman="apk --quiet --no-interactive --no-progress --no-cache";
 
-#### Necessary after-build steps
-# TODO: check 'addgroup' utility reasons for use.
-# hadolint ignore=SC2154
-ONBUILD RUN addgroup -S ${appgroup} && adduser `
-        -G "${appgroup}" `
-        -g "${user_gecos}" `
-        -s "${user_shell}" `
-        -h "${user_home}" `
-        -H `
-        -D `
-        -S `
+# Install base packs
+pkgman upgrade --latest;
+pkgman add --latest "${app_pack_1}";
+
+# Sys settings
+setup-timezone -i "${timezone}";
+
+# Remove unnecessary packs and delete cache
+apk del "${app_pack_1}";
+apk cache clean;
+rm -rf "${pm_cache_1}" "${pm_cache_2}";
+
+# Create app user
+addgroup -S ${appgroup};
+adduser -G "${appgroup}" \
+        -g "${user_gecos}" \
+        -s "${user_shell}" \
+        -h "${user_home}" \
+        -H \
+        -D \
+        -S \
         "${appuser}";
+EOF
 
 # ------------------------------------------------------------------------------
 
 ## 2. Building
-# - Additional env vars for 'rustup' and 'cargo build' can be added as 'ARGs'. 
+# Additional env vars for 'rustup' and 'cargo build' scripts can be
+# added as 'ARGs'. 
 # TODO: switch to net install? Git 'clone' or copy source / mount volume?
-### Toolset image
 FROM base AS builder
 
 ### Args
-# - Toolchain and deps
+#### Toolchain and deps
 # TODO: check 'openssl-dev' reasons.
 # TODO: check all dev deps packs invariants.
-# ARG dev_packages='openssl-dev pkgconf musl-dev gcc make'
-# ARG dev_packages='pkgconf musl-dev gcc make'
+ARG dev_dep_01="openssl-dev"
+# ARG dev_dep_02="pkgconf"
+# ARG dev_dep_03="musl-dev"
+ARG dev_dep_04="gcc"
+ARG dev_dep_05="make"
 
-# - Dirs
-# Package manager cache cache
+#### Dirs
+##### Package manager cache cache
 ARG pm_cache_1="/var/cache/apk"
 ARG pm_cache_2="/etc/apk/cache"
 
-# Builder
+##### Builder (no roots)
 ARG buildroot="build"
 
-# Apps and configs (no roots)
+#### Apps and configs (no roots)
 ARG app_dir="app"
 ARG ci_dir="ci"
-ARG config_path="config"
+ARG config_dir="config"
 
-# - Source files permissions
-ARG buildroot_perms=750
+#### Source files permissions
+# ARG buildroot_perms=750
 
-# - App build stage users/groups
+#### App build stage users/groups
 ARG build_user="builder"
 ARG build_group="builders"
 
-# - Source repo
+#### Source repo
 ARG repo="."
 
-# - Rustup-init env args
+### Rustup-init env args
 # TODO: check args is accessible for installer during installong 'Rust'.
-ARG RUSTUP_TOOLCHAIN="x86_64-unknown-linux-musl"
+# ARG RUSTUP_TOOLCHAIN="stable-x86_64-unknown-linux-musl"
 
-# - Cargo build env
-# No roots in dirs.
-ARG CARGO_MANIFEST_DIR="."
-ARG CARGO_BUILD_TARGET="x86_64-unknown-linux-musl"
+#### Cargo build env
+# TODO: check can be safely remove from here.
+# ARG CARGO_MANIFEST_DIR="."
+# ARG CARGO_BUILD_TARGET="x86_64-unknown-linux-musl"
 ARG CARGO_BUILD_TARGET_DIR="target"
 ARG OUT_DIR "release"
 ARG CARGO_TARGET_TMPDIR "temp"
 
-#### Get tools
+### Get tools
 # TODO: check dev packs.
-# hadolint ignore=DL3018,SC2154
-RUN apk --quiet --no-interactive --no-progress --no-cache `
-        upgrade --latest; `
-    # apk --quiet --no-interactive --no-progress --no-cache `
-    #     add "${dev_packages}"; `
-    apk cache clean && rm -rf "${pm_cache_1}" "${pm_cache_2}";
+RUN <<EOF
+alias pkgman="apk --quiet --no-interactive --no-progress --no-cache";
+pkgman upgrade --latest;
+pkgman add "${dev_dep_01}" "${dev_dep_04}";
+apk cache clean && rm -rf "${pm_cache_1}" "${pm_cache_2}";
+rustup update "stable";
+EOF
+
+#### Build user creation
+RUN <<EOF
+addgroup -S ${build_group};
+adduser -G "${build_group}" -D -S "${build_user}";
+EOF
 
 #### Building
-# CWD and switch user
-WORKDIR ${buildroot}
+##### CWD and switch user
 USER ${build_user}
+WORKDIR ${buildroot}
 
-# - Copying sources from local root
+##### Copying sources from local root
 COPY --chown=${build_user}:${build_group} --chmod=${buildroot_perms} ${repo} .
+# COPY ${repo} .
 RUN make local && make build;
 # Additional flags: "--quiet" "--release"
 
-#### After-build steps.
-# Copy default config to volume
-ONBUILD COPY "${ci_dir}/${config_path}" "/${app_dir}/"
+### After-build steps.
+#### Copy default config folder to shared volume
+VOLUME "/${app_dir}/${config_dir}"
+COPY "${ci_dir}/${config_dir}" "/${app_dir}"
 
 # ------------------------------------------------------------------------------
 
 ## 3. Run app
 # TODO: mount volume with workload configs and check size/layering.
 # TODO: add 'CMD' instruction for config in mounted volume.
-
-### Runner image
 # hadolint ignore=DL3029
-FROM --platform=${rp_arch} ${rp_platform}:${rp_version} AS runner
+# FROM --platform=${rp_arch} ${rp_platform}:${rp_version} AS runner
+FROM base as runner
 
-#### Args
-# - Dirs
-# From stages
+### Args
+#### Dirs
+##### From previous stages
 ARG distribution="/build/target/release"
 
-# Apps path (local, no roots)
+##### Apps and configs (local, no roots)
 ARG app_dir="app"
-ARG config_path="config"
+ARG config_dir="config"
 ARG config="config.toml"
 
-# Apps
+#### Apps
 ARG app="xiu"
 ARG web_server="http-server"
 ARG pprtmp_server="pprtmp"
 
-# - Users/groups
-# Apps user 
+#### Users/groups
+##### Apps user 
 ARG user="appuser"
 ARG appgroup="appusers"
 
-# Apps owner
+##### Apps owner
 ARG app_owner="root"
 
-# - App files permission
-ARG app_perms=750
+##### Apps permission
+ARG app_dir_perms=750
+ARG app_exec_perms="750+x"
 
-# - Healthcheck
+#### Healthcheck
 ARG prober="ping"
 ARG probe_addr="8.8.8.8"
 ARG probe_count=5
@@ -200,27 +220,27 @@ ARG probe_deadline=10
 ARG probe_timeout=15
 
 #### Main workload env
-ENV TZ=${tz}
+ENV TZ=${timezone}
 # TODO: check other bins and full/short PATH with 'healthcheck'.
 # ENV PATH="${app_dir}:$PATH"
 ENV PATH=${app_dir}
 ENV APP=${app}
-ENV APP_CONFIG="${app_dir}/${config_path}/${config}"
+ENV APP_CONFIG="${app_dir}/${config_dir}/${config}"
 
-#### CWD
+### CWD
 WORKDIR ${app_dir}
 
 ### Install app
-VOLUME [ "/${app_dir}/${config_path}" ]
+VOLUME [ "/${app_dir}/${config_dir}" ]
 COPY    --from=builder `
         --chown="${app_owner}:${appgroup}" `
-        --chmod=${app_perms} `
+        --chmod=${app_dir_perms} `
              "${distribution}/${app}", `
              "${distribution}/${web_server}", `
              "${distribution}/${pprtmp_server}" `
                 ./
 
-#### Ports
+### Ports
 EXPOSE 80
 EXPOSE 80/udp
 EXPOSE 443
@@ -229,7 +249,7 @@ EXPOSE 1935/udp
 EXPOSE 8000
 EXPOSE 8000/udp
 
-#### Health-check
+### Health-check
 # TODO: check 'HEALTHCHECK' args is usable with vars.
 # HEALTHCHECK --interval=5m --timeout=30s --start-period=5s --retries=3 `
 #     # TODO: pipe status code and message output.
@@ -241,12 +261,11 @@ EXPOSE 8000/udp
 #                 ${probe_addr}; `
 #         exit "$?";
 
-#### Switch user and start app
+### Switch user and start app
 USER ${user}
 
 # hadolint ignore=DL3025
 ENTRYPOINT [ ${APP} ]
 
-# - Args for default start
 # hadolint ignore=DL3025
 CMD  [ "-c", ${APP_CONFIG} ]

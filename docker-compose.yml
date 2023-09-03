@@ -5,16 +5,16 @@ name: "restreamer"
 
 # ------------------------------------------------------------------------------
 
-# Network settings
-x-app-network: &app-network
-  expose: &app-ports
-    - ${http_port}
-    - ${httpudp_port}
-    - ${https_port}
-    - ${rtmp_port}
-    - ${rtmpudp_port}
-    - ${api_port},
-    - ${apiudp_port}
+# # Network settings
+# x-app-network: &app-network
+#   expose: &app-ports
+#     - ${http_port}
+#     - ${httpudp_port}
+#     - ${https_port}
+#     - ${rtmp_port}
+#     - ${rtmpudp_port}
+#     - ${api_port},
+#     - ${apiudp_port}
 
 # ------------------------------------------------------------------------------
 # App containers
@@ -29,7 +29,7 @@ services:
       target: "runner"
       # args:
         # # Global
-        # tz: "Europe/Moscow"
+        # timezone: "Europe/Moscow"
         # user: "appuser"
         # app_group: "appusers"
 
@@ -61,7 +61,7 @@ services:
     image: "normkd/1688557675-test01:1.0.0"
     container_name: "${COMPOSE_PROJECT_NAME}.root"
     volumes:
-      - "./ci/config:/app/config"
+      - "streamer_config:/app/config"
     user: "appuser"
     environment:
       TZ: "Asia/Tokyo"
@@ -71,7 +71,7 @@ services:
       timeout: "30s"
       retries: 3
       start_period: "5s"
-    expose: *app-ports
+    # expose: *app-ports
     hostname: "streamer-00"
     networks:
       - intra
