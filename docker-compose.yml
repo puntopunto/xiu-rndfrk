@@ -64,7 +64,7 @@ services:
       - "streamer_config:/app/config"
     user: "appuser"
     environment:
-      TZ: "Asia/Tokyo"
+      TZ: "Europe/Moscow"
     healthcheck:
       test: ["CMD", "ping", "-c", "4", "ya.ru"]
       interval: "5m"
