@@ -13,21 +13,21 @@
 # ! README
 
 # TODO: readme.
-
+# ______________________________________________________________________________
 # ------------------------------------------------------------------------------
-## Pre-build setting
-# ### Global args
-# TODO: check if it works.
-# #### Date and time
-# ARG timezone="Africa/Nairobi"
+## Global args
+ARG builder_version="latest"
+ARG runner_version="latest"
 
 # ------------------------------------------------------------------------------
 
 ## 1. Base
-FROM rust:alpine AS base
+FROM rust:${builder_version} AS base
 
 ### Args
-#### Groups and users settings (only 1 for now)
+#### User and group settings
+ARG appuser="appuser"
+ARG appgroup="appusers"
 ARG user_gecos="Special no-login user for app"
 ARG user_shell="/sbin/nologin"
 ARG user_home="/nonexistent"
@@ -52,6 +52,20 @@ setup-timezone -i "${timezone}";
 apk del "alpine-conf";
 apk cache clean;
 rm -rf "/var/cache/apk" "/etc/apk/cache";
+EOF
+
+### Post-build steps
+# Add app user and group
+ONBUILD RUN <<EOF
+addgroup -S "${appgroup}";
+adduser -G "${appgroup}" \
+        -g "${user_gecos}" \
+        -s "${user_shell}" \
+        -h "${user_home}" \
+        -H \
+        -D \
+        -S \
+        "${appuser}";
 EOF
 
 # ------------------------------------------------------------------------------
@@ -137,9 +151,7 @@ COPY ${source_config_dir} ${config_volume}
 ## 3. Run app
 # TODO: mount volume with workload configs and check size/layering.
 # TODO: add 'CMD' instruction for config in mounted volume.
-# Tis is test file, ignoring image version linter warning.
-# hadolint ignore=DL3007
-FROM alpine:latest AS runner
+FROM alpine:${runner_version} AS runner
 # FROM base as runner
 
 ### Args

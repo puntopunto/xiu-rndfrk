@@ -13,3 +13,8 @@
 !Cargo.lock
 !Cargo.toml
 !LICENSE
+
+.env*
+.flaskenv*
+!.env.project
+!.env.vault
