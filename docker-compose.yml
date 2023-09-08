@@ -5,18 +5,6 @@ name: "restreamer"
 
 # ------------------------------------------------------------------------------
 
-# # Network settings
-# x-app-network: &app-network
-#   expose: &app-ports
-#     - ${http_port}
-#     - ${httpudp_port}
-#     - ${https_port}
-#     - ${rtmp_port}
-#     - ${rtmpudp_port}
-#     - ${api_port},
-#     - ${apiudp_port}
-
-# ------------------------------------------------------------------------------
 # App containers
 
 # Restremer 'pod'
@@ -27,40 +15,10 @@ services:
     build:
       context: "."
       target: "runner"
-      # args:
-        # # Global
-        # timezone: "Europe/Moscow"
-        # user: "appuser"
-        # app_group: "appusers"
-
-        # ## Platforms and versions
-        # bp_arch: "linux/amd64"
-        # bp_version: "latest"
-
-        # ## App and deps sources
-        # # rustup_init_url: "https://sh.rustup.rs"
-        # rustup_init: "/build/source/ci/scripts/common/rustup-init.sh"
-        # # source_url: "https://github.com/puntopunto/xiu-rndfrk.git"
-        # # source_branch: "ci"
-        # # source_dir: "/build/src"
-        # app_version: "v0.7.0"
-
-        # # Paths
-        # # buildroot: "/build"
-        # # TODO: check 'cargoroot' (absolute/relative, with defaults).
-        # # cargoroot: "~/.cargo/bin"
-        # release_dir: "/build/xiu/release"
-        # app_dir: "/app"
-
-        # # Apps
-        # app: "xiu"
-        # web_server: "http-server"
-        # pprtmp_server: "pprtmp"
-
-    # Container settings
     image: "normkd/1688557675-test01:1.0.0"
     container_name: "${COMPOSE_PROJECT_NAME}.root"
     volumes:
+      # App config volume
       - "streamer_config:/app/config"
     user: "appuser"
     environment:
@@ -71,20 +29,9 @@ services:
       timeout: "30s"
       retries: 3
       start_period: "5s"
-    # expose: *app-ports
     hostname: "streamer-00"
     networks:
       - intra
-    # expose:
-      # <<: *ports
-    #     ipv4_address: "172.16.100.5"
-    # ports:
-    #   - "55001:1935"
-    #   - "1935:1935/udp"
-    #   - "8000:8000"
-    #   - "8000:8000/udp"
-    # extra_hosts:
-    #   - "host.docker.internal:host-gateway"
   
     command: ["-c", "config/config_rtmp.toml"]
 
@@ -94,24 +41,12 @@ services:
       service: "root_streamer"
     container_name: "${COMPOSE_PROJECT_NAME}.node-01"
     hostname: "streamer-01"
-    # ports:
-    #   - "55002:1935"
-    #   - "8000:8000"
-    # networks:
-    #   intra:
-    #     ipv4_address: "172.16.110.6"
 
   streamer2:
     extends:
       service: "root_streamer"
     container_name: "${COMPOSE_PROJECT_NAME}.node-02"
     hostname: "streamer-02"
-    # ports:
-    #   - "55003:1935"
-    #   - "8000:8000"
-    # networks:
-    #   intra:
-    #     ipv4_address: "172.16.120.5"
 
 # ------------------------------------------------------------------------------
 # Pod settings

@@ -37,70 +37,56 @@ ARG timezone="Europe/Moscow"
 
 ### Base setup
 # TODO: check for smaller layers qty, if possible.
-RUN <<EOF
-# Package manager settings
-export alias apkq="apk --quiet --no-interactive --no-progress --no-cache";
-
-# Install base packs
-apkq upgrade --latest;
-apkq add --latest "alpine-conf";
-
-# Sys settings
-setup-timezone -i "${timezone}";
-
+# Set alias for package manager
+# Install sysconf
+# Setup timezone
 # Remove unnecessary packs and delete cache
-apk del "alpine-conf";
-apk cache clean;
-rm -rf "/var/cache/apk" "/etc/apk/cache";
-EOF
+RUN apkq="apk --quiet --no-interactive --no-progress --no-cache"; `
+    $apkq upgrade --latest; `
+    $apkq add --latest "alpine-conf"; `
+    setup-timezone -i "${timezone}"; `
+    $apkq del "alpine-conf"; `
+    $apkq cache clean && rm -rf "/var/cache/apk" "/etc/apk/cache";
 
 ### Post-build steps
 # Add app user and group
-ONBUILD RUN <<EOF
-addgroup -S "${appgroup}";
-adduser -G "${appgroup}" \
-        -g "${user_gecos}" \
-        -s "${user_shell}" \
-        -h "${user_home}" \
-        -H \
-        -D \
-        -S \
+ONBUILD RUN addgroup -S "${appgroup}"; `
+        adduser -G "${appgroup}" `
+        -g "${user_gecos}" `
+        -s "${user_shell}" `
+        -h "${user_home}" `
+        -H `
+        -D `
+        -S `
         "${appuser}";
-EOF
 
 # ------------------------------------------------------------------------------
 
 ## 2. Building
-# ```text
 # Additional env vars for 'rustup' and 'cargo build' can be added as "ARG's".
-# ```
 # TODO: switch to net install? Git 'clone' or copy source / mount volume?
 FROM base AS builder
 
 ### Args
-#### Toolchain and deps
-# TODO: check 'openssl-dev' reasons.
-# TODO: check if arg is need by something external.
-# ARG dependencies='"openssl-dev" "pkgconf" "musl-dev" "gcc" "make"'
-
 #### Dirs
 ##### Builder
 ARG buildroot="build"
 
-#### Apps and configs (no roots)
+##### Apps and configs (no roots)
 ARG config_volume="/app_config"
 ARG source_config_dir="./ci/config"
 
 #### Source files permissions
-ARG buildroot_perms="750+x"
+# TODO: check if need.
+# ARG buildroot_perms="750"
 
 #### App build stage users/groups
 ARG build_user="builder"
 ARG build_group="builders"
 
-### Rustup-init env args
+#### Rustup-init env args
 # TODO: check args is accessible for installer during installong 'Rust'.
-# ARG RUSTUP_TOOLCHAIN="stable-x86_64-unknown-linux-musl"
+ARG RUSTUP_TOOLCHAIN="stable-x86_64-unknown-linux-musl"
 
 #### Cargo build env
 ARG CARGO_BUILD_TARGET="x86_64-unknown-linux-musl"
@@ -111,22 +97,16 @@ ARG OUT_DIR "release"
 
 ### Setup toolchain
 # TODO: check dev packs.
-RUN <<EOF
-# Package manager settings
-export alias apkq="apk --quiet --no-interactive --no-progress --no-cache";
-
+# Set alias for package manager
 # Install build packs
-apkq upgrade --latest;
-apkq add --latest "openssl-dev" "make" "gcc" "musl-dev";
-apk cache clean && rm -rf "/var/cache/apk" "/etc/apk/cache";
-rustup update "stable";
-
-# Build user creation
-addgroup -S ${build_group};
-adduser -G "${build_group}" -D -S "${build_user}";
-
-# end
-EOF
+# Create build user
+RUN apkq="apk --quiet --no-interactive --no-progress --no-cache"; `
+    $apkq upgrade --latest; `
+    $apkq add --latest "openssl-dev" "make" "gcc" "musl-dev"; `
+    $apkq cache clean && rm -rf "/var/cache/apk" "/etc/apk/cache"; `
+    rustup update "stable"; `
+    addgroup -S ${build_group}; `
+    adduser -G "${build_group}" -D -S "${build_user}";
 
 #### Building
 ##### CWD and switch user
@@ -161,7 +141,7 @@ ARG distribution="/build/target/release"
 
 ##### Apps and configs
 ARG app_dir="/app"
-ARG config_volume="/app/config"
+ARG app_config="/app/config/config.toml"
 
 #### Apps
 ARG app="xiu"
@@ -179,7 +159,7 @@ ARG app_owner="root"
 ##### Apps permission
 # TODO: check exec permissions
 ARG app_dir_perms=750
-ARG app_exec_perms="750+x"
+ARG app_bin_perms="750+x"
 
 #### Healthcheck
 ARG prober="ping"
@@ -193,21 +173,21 @@ ENV TZ=${timezone}
 # TODO: check other bins and full/short PATH with 'healthcheck'.
 # ENV PATH="${app_dir}:$PATH"
 ENV PATH=${app_dir}
-ENV APP=${app}
-ENV APP_CONFIG="${config_volume}/config.toml"
+ENV APP="xiu"
+ENV APP_CONFIG=${app_config}
 
 ### CWD
 WORKDIR ${app_dir}
 
 ### Install app
-VOLUME [ ${config_volume} ]
+VOLUME "/app/config"
 COPY    --from=builder `
         --chown="${app_owner}:${appgroup}" `
         --chmod=${app_dir_perms} `
-             "${distribution}/${app}", `
-             "${distribution}/${web_server}", `
-             "${distribution}/${pprtmp_server}" `
-                ./
+                "${distribution}/${APP}", `
+                "${distribution}/${web_server}", `
+                "${distribution}/${pprtmp_server}" `
+                        ./
 
 ### Ports
 EXPOSE 80
