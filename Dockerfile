@@ -21,7 +21,6 @@ ARG builder_version="latest"
 ARG runner_version="latest"
 
 # ------------------------------------------------------------------------------
-
 ## 1. Build app
 FROM rust:${builder_version} AS builder
 
@@ -83,15 +82,14 @@ RUN make local && make build;
 
 ### After-build steps.
 #### Copy default config files to shared volume
-VOLUME ${config_volume}
+VOLUME [ ${config_volume} ]
 COPY ${source_config_dir} ${config_volume}
 
 # ------------------------------------------------------------------------------
-
 ## 2. Run app
 # TODO: mount volume with workload configs and check size/layering.
 FROM alpine:${runner_version} AS runner
-# FROM scratch
+# FROM alpine:${runner_version} AS preroll
 
 ### Args
 #### Dirs
@@ -113,7 +111,7 @@ ARG pprtmp_server="pprtmp"
 
 #### Users and groups settings
 ##### App user 
-ARG appuser="appuser"
+ARG app_user="appuser"
 ARG appgroup="appusers"
 ARG user_gecos="Special no-login user for app"
 ARG user_shell="/sbin/nologin"
@@ -173,7 +171,7 @@ RUN ${apkq} upgrade --latest; `
         -H `
         -D `
         -S `
-            "${appuser}"; `
+            "${app_user}"; `
     chmod ${app_exec_perms} "${app_dir}/${app}"; `
     ${apkq} del "alpine-conf"; `
     ${apkq} cache clean && rm -rf "/var/cache/apk" "/etc/apk/cache";
@@ -189,22 +187,82 @@ EXPOSE 8000/udp
 
 ### Healthcheck
 HEALTHCHECK --interval=5m --timeout=30s --start-period=5s --retries=3 `
-    # TODO: pipe status code and message output.
-    CMD [ `
+        # TODO: pipe status code and message output.
+        CMD [ `
         "/bin/ping" `
-            "-q" `
-            "-c" ${hc_count} `
-            "-W" ${hc_wait} `
-            "-w" ${hc_timer} `
-                "www.ru"; `
+        "-q" `
+        "-c" ${hc_count} `
+        "-W" ${hc_wait} `
+        "-w" ${hc_timer} `
+        "www.ru"; `
         exit $?; `
-    ]
+        ]
 
 ### Start app
-USER ${appuser}
+USER ${app_user}
 
 # hadolint ignore=DL3025
+
 ENTRYPOINT [ ${APP} ]
 
 # hadolint ignore=DL3025
+
 CMD  [ "-c", ${APP_CONFIG} ]
+
+# ------------------------------------------------------------------------------
+# ! 3. Test build
+# FROM scratch as scratch_test
+
+# ARG app_owner="root"
+# ARG app_user="appuser"
+# ARG app_group="appusers"
+# ARG source_dir="/app"
+# ARG app_dir="/app"
+# ARG app_fpath="/app/xiu"
+# ARG app="xiu"
+# ARG app_dir_perms="750"
+# ARG app_exec_perm="+x"
+
+# ENV PATH=${app_dir}
+# ENV APP=${app_fpath}
+# ENV APP_CONFIG=${app_config}
+
+# # COPY --from=preroll --chown=${app_owner}:${app_group} ${source_dir} /
+
+# RUN --mount=from=runner,source=${source_dir},target=${app_dir} `
+#     chown ${app_owner} ${app_dir} `
+#     && chmod ${app_dir_perms} ${app_dir} `
+#     && chmod${app_exec_perm} ${app_fpath};
+
+# USER ${app_user}
+
+# ### Ports
+# EXPOSE 80
+# EXPOSE 80/udp
+# EXPOSE 443
+# EXPOSE 1935
+# EXPOSE 1935/udp
+# EXPOSE 8000
+# EXPOSE 8000/udp
+
+# ### Healthcheck
+# HEALTHCHECK --interval=5m --timeout=30s --start-period=5s --retries=3 `
+#     # TODO: pipe status code and message output.
+#     CMD [ `
+#         "/bin/ping" `
+#             "-q" `
+#             "-c" ${hc_count} `
+#             "-W" ${hc_wait} `
+#             "-w" ${hc_timer} `
+#                 "www.ru"; `
+#         exit $?; `
+#     ]
+
+# ### Start app
+# USER ${app_user}
+
+# # hadolint ignore=DL3025
+# ENTRYPOINT [ ${APP} ]
+
+# # hadolint ignore=DL3025
+# CMD  [ "-c", ${APP_CONFIG} ]
