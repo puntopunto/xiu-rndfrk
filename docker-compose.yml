@@ -32,8 +32,7 @@ services:
     hostname: "streamer-00"
     networks:
       - intra
-  
-    command: ["-c", "config/config_rtmp.toml"]
+    # command: ["-c", "config/config_rtmp.toml"]
 
   # 2. Streamer instances
   streamer1:

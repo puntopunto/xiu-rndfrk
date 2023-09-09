@@ -29,6 +29,9 @@ FROM rust:${builder_version} AS builder
 #### Builder env
 ARG TZ="Europe/Moscow"
 
+#### Alias for 'apk' package manager
+ARG apkq="apk --quiet --no-interactive --no-progress --no-cache"
+
 #### Dirs
 ##### Builder
 ARG buildroot="build"
@@ -36,8 +39,6 @@ ARG buildroot="build"
 ##### Apps and configs
 ARG source_config_dir="./ci/config"
 ARG config_volume="/app/config"
-
-#### Source files permissions
 # TODO: check if need.
 # ARG buildroot_perms="750"
 
@@ -58,13 +59,11 @@ ARG OUT_DIR "/release"
 
 ### Setup toolchain
 # TODO: check dev packs.
-# Set alias for package manager
 # Install build packs
 # Create build user
-RUN alias apkq="apk --quiet --no-interactive --no-progress --no-cache";
-RUN apkq upgrade --latest; `
-    apkq add --latest "openssl-dev" "make" "gcc" "musl-dev"; `
-    apkq cache clean && rm -rf "/var/cache/apk" "/etc/apk/cache"; `
+RUN ${apkq} upgrade --latest; `
+    ${apkq} add --latest "openssl-dev" "make" "gcc" "musl-dev"; `
+    ${apkq} cache clean && rm -rf "/var/cache/apk" "/etc/apk/cache"; `
     rustup update "stable"; `
     addgroup -S ${build_group}; `
     adduser -G "${build_group}" -D -S "${build_user}";
@@ -99,10 +98,13 @@ FROM alpine:${runner_version} AS runner
 ##### From previous stages
 ARG distribution="/build/target/release"
 
+
 ##### Apps and configs
-ARG app="xiu"
 ARG app_dir="/app"
 ARG app_config="/app/config/config.toml"
+
+#### Alias for 'apk' package manager
+ARG apkq="apk --quiet --no-interactive --no-progress --no-cache"
 
 #### Apps
 ARG app="xiu"
@@ -156,14 +158,12 @@ COPY    --from=builder `
 
 ### Setup app
 # TODO: check for smaller layers qty, if possible.
-# Set alias for package manager
 # Install sysconf
 # Setup timezone
 # Setup user/group/perms
 # Remove unnecessary packs and delete cache
-RUN alias apkq="apk --quiet --no-interactive --no-progress --no-cache";
-RUN apkq upgrade --latest; `
-    apkq add --latest "alpine-conf"; `
+RUN ${apkq} upgrade --latest; `
+    ${apkq} add --latest "alpine-conf"; `
     setup-timezone -i "${timezone}"; `
     addgroup -S "${appgroup}"; `
     adduser -G "${appgroup}" `
@@ -175,8 +175,8 @@ RUN apkq upgrade --latest; `
         -S `
             "${appuser}"; `
     chmod ${app_exec_perms} "${app_dir}/${app}"; `
-    apkq del "alpine-conf"; `
-    apkq cache clean && rm -rf "/var/cache/apk" "/etc/apk/cache";
+    ${apkq} del "alpine-conf"; `
+    ${apkq} cache clean && rm -rf "/var/cache/apk" "/etc/apk/cache";
 
 ### Ports
 EXPOSE 80
