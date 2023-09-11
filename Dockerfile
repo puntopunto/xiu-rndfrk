@@ -7,12 +7,12 @@
 
 # ~ Test image
 
-## TODO: improve header (add info, pic, etc.) and add more 'MD' formatting.
+##TODO: improve header (add info, pic, etc.) and add more 'MD' formatting.
 
 # ------------------------------------------------------------------------------
 # ! README
 
-# TODO: readme.
+#TODO: readme.
 
 # ______________________________________________________________________________
 # ------------------------------------------------------------------------------
@@ -38,7 +38,7 @@ ARG buildroot="build"
 ##### Apps and configs
 ARG source_config_dir="./ci/config"
 ARG config_volume="/app/config"
-# TODO: check if need.
+#TODO: check if need.
 # ARG buildroot_perms="750"
 
 #### App build stage users/groups
@@ -46,7 +46,7 @@ ARG build_user="builder"
 ARG build_group="builders"
 
 #### Rustup-init env args
-# TODO: check args is accessible for installer during installong 'Rust'.
+#TODO: check args is accessible for installer during installong 'Rust'.
 ARG RUSTUP_TOOLCHAIN="stable-x86_64-unknown-linux-musl"
 
 #### Cargo build env
@@ -57,14 +57,14 @@ ARG CARGO_BUILD_TARGET_DIR="/target"
 ARG OUT_DIR "/release"
 
 ### Setup toolchain
-# TODO: check dev packs.
+#TODO: check dev packs.
 # Install build packs
 # Create build user
 RUN ${apkq} upgrade --latest; `
     ${apkq} add --latest "openssl-dev" "make" "gcc" "musl-dev"; `
     ${apkq} cache clean && rm -rf "/var/cache/apk" "/etc/apk/cache"; `
     rustup update "stable"; `
-    # TODO: check lines below for needing.
+    #TODO: check lines below for needing.
     # rustup component add "cargo-x86_64-unknown-linux-musl" `
     #     "rust-std-x86_64-unknown-linux-musl" `
     #     "rustc-x86_64-unknown-linux-musl"; `
@@ -79,16 +79,16 @@ RUN ${apkq} upgrade --latest; `
 WORKDIR ${buildroot}
 
 #### Copying sources and set perms
-# TODO: check if this need if run/build from git.
+#TODO: check if this need if run/build from git.
 # COPY --chown=${build_user}:${build_group} --chmod=${buildroot_perms} . .
-# TODO: check if script works, thing about to replace hardcoded line.
+#TODO: check if script works, thing about to replace hardcoded line.
 # RUN find . -type f -name "*.sh" -exec chmod +x {} +;
 RUN chmod +x "confs/update_project_conf.sh"
 
 ##### Switch user
-# TODO: check why not works.
+#TODO: check why not works.
 # USER ${build_user}
-RUN make online && make build --quiet;
+RUN make config_online && make update && make build;
 # Additional flags: "--release"
 
 ### After-build steps.
@@ -98,7 +98,7 @@ COPY ${source_config_dir} ${config_volume}
 
 # ------------------------------------------------------------------------------
 ## 2. Run app
-# TODO: mount volume with workload configs and check size/layering.
+#TODO: mount volume with workload configs and check size/layering.
 FROM alpine:${runner_version} AS runner
 
 ### Args
@@ -106,18 +106,17 @@ FROM alpine:${runner_version} AS runner
 ##### From previous stages
 ARG distribution="/build/target/release"
 
-
 ##### Apps and configs
 ARG app_dir="/app"
 ARG app_config="/app/config/config.toml"
-
-#### Alias for package manager
-ARG apkq='apk --quiet --no-interactive --no-progress --no-cache'
 
 #### Apps
 ARG app="xiu"
 ARG web_server="http-server"
 ARG pprtmp_server="pprtmp"
+
+#### Alias for package manager
+ARG apkq='apk --quiet --no-interactive --no-progress --no-cache'
 
 #### Users and groups settings
 ##### App user 
@@ -139,13 +138,13 @@ ARG hc_timer=0
 ARG app_owner="root"
 
 ##### Apps permission
-# TODO: check exec permissions
+#TODO: check exec permissions
 ARG app_dir_perms=750
 ARG app_exec_perms="+x"
 
 #### Workload env
 ENV TZ=${TZ}
-# TODO: check other bins and full/short PATH with 'healthcheck'.
+#TODO: check other bins and full/short PATH with 'healthcheck'.
 # ENV PATH="${app_dir}:$PATH"
 ENV PATH=${app_dir}
 ENV APP=${app}
@@ -165,7 +164,7 @@ COPY    --from=builder `
                 ./
 
 ### Setup app
-# TODO: check for smaller layers qty, if possible.
+#TODO: check for smaller layers qty, if possible.
 # Install sysconf
 # Setup timezone
 # Setup user/group/perms
@@ -197,7 +196,7 @@ EXPOSE 8000/udp
 
 ### Healthcheck
 HEALTHCHECK --interval=5m --timeout=30s --start-period=5s --retries=3 `
-        # TODO: pipe status code and message output.
+        #TODO: pipe status code and message output.
         CMD [ `
         "/bin/ping" `
         "-q" `
@@ -211,68 +210,8 @@ HEALTHCHECK --interval=5m --timeout=30s --start-period=5s --retries=3 `
 ### Start app
 USER ${app_user}
 
-# hadolint ignore=DL3025
-
+#TODO: check and uncomment linter overrides below (or fix and delete strings.)
+## hadolint ignore=DL3025
 ENTRYPOINT [ ${APP} ]
-
-# hadolint ignore=DL3025
-
+## hadolint ignore=DL3025
 CMD  [ "-c", ${APP_CONFIG} ]
-
-# ------------------------------------------------------------------------------
-# ! 3. Test build
-# FROM scratch as scratch_test
-
-# ARG app_owner="root"
-# ARG app_user="appuser"
-# ARG app_group="appusers"
-# ARG source_dir="/app"
-# ARG app_dir="/app"
-# ARG app_fpath="/app/xiu"
-# ARG app="xiu"
-# ARG app_dir_perms="750"
-# ARG app_exec_perm="+x"
-
-# ENV PATH=${app_dir}
-# ENV APP=${app_fpath}
-# ENV APP_CONFIG=${app_config}
-
-# # COPY --from=runner --chown=${app_owner}:${app_group} ${source_dir} ./
-
-# RUN --mount=from=runner,source=${source_dir},target=${app_dir} `
-#     chown ${app_owner} ${app_dir} `
-#     && chmod ${app_dir_perms} ${app_dir} `
-#     && chmod${app_exec_perm} ${app_fpath};
-
-# USER ${app_user}
-
-# ### Ports
-# EXPOSE 80
-# EXPOSE 80/udp
-# EXPOSE 443
-# EXPOSE 1935
-# EXPOSE 1935/udp
-# EXPOSE 8000
-# EXPOSE 8000/udp
-
-# ### Healthcheck
-# HEALTHCHECK --interval=5m --timeout=30s --start-period=5s --retries=3 `
-#     # TODO: pipe status code and message output.
-#     CMD [ `
-#         "/bin/ping" `
-#             "-q" `
-#             "-c" ${hc_count} `
-#             "-W" ${hc_wait} `
-#             "-w" ${hc_timer} `
-#                 "www.ru"; `
-#         exit $?; `
-#     ]
-
-# ### Start app
-# USER ${app_user}
-
-# # hadolint ignore=DL3025
-# ENTRYPOINT [ ${APP} ]
-
-# # hadolint ignore=DL3025
-# CMD  [ "-c", ${APP_CONFIG} ]

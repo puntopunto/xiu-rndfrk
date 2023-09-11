@@ -11,16 +11,21 @@ name: "restreamer"
 services:
 
   # 1. Base streamer
-  root_streamer:
+  streamer:
     build:
       context: "https://github.com/puntopunto/xiu-rndfrk.git"
+      platforms:
+        - linux/x86_64
       target: "runner"
+      args:
+        TZ: "Africa/Nairobi"
     image: "normkd/1688557675-test01:1.0.0"
     container_name: "${COMPOSE_PROJECT_NAME}.root"
     volumes:
       # App config volume
       - "streamer_config:/app/config"
-    user: "appuser"
+    #TODO: check if field is conflicting with build stage.
+    # user: "appuser"
     environment:
       TZ: "Europe/Moscow"
     healthcheck:
@@ -33,19 +38,6 @@ services:
     networks:
       - intra
     # command: ["-c", "config/config_rtmp.toml"]
-
-  # 2. Streamer instances
-  streamer1:
-    extends:
-      service: "root_streamer"
-    container_name: "${COMPOSE_PROJECT_NAME}.node-01"
-    hostname: "streamer-01"
-
-  streamer2:
-    extends:
-      service: "root_streamer"
-    container_name: "${COMPOSE_PROJECT_NAME}.node-02"
-    hostname: "streamer-02"
 
 # ------------------------------------------------------------------------------
 # Pod settings
@@ -64,11 +56,11 @@ networks:
       subnet: "172.100.100.0/24"
       ip_range: "172.100.100.0/28"
       gateway: "172.100.100.10"
-    # ipam:
-    #   config:
-    #     - subnet: "172.100.100.0/24"
-    #     - ip_range: "172.100.100.0/28"
-    #     - gateway: "172.100.100.10"
+    ipam:
+      config:
+        - subnet: "172.100.100.0/24"
+        - ip_range: "172.100.100.0/28"
+        - gateway: "172.100.100.10"
 
 volumes:
   streamer_config:

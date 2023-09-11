@@ -13,8 +13,8 @@ config_offline:
 config_online:
 	cd ./confs && $(COPY_CONF_FILES) "online";
 
-online_update:
-	cd ./confs && $(COPY_CONF_FILES) "online" && cargo update
+update_dependencies:
+	cargo update
 
 check:
 	cargo clippy --fix --allow-dirty --allow-no-vcs
@@ -25,14 +25,5 @@ clean:
 build:
 	cargo build
 
-test-build-musl:
+build-musl-release:
 	cargo build --target "x86_64-unknown-linux-musl" --release
-
-build-default:
-	cargo build \
-		--quiet \
-		--target-dir "/build/target" \
-		--out-dir "/build/release"
-
-test-build-default-platform:
-	cargo build --release
