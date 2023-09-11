@@ -13,7 +13,7 @@ services:
   # 1. Base streamer
   root_streamer:
     build:
-      context: "."
+      context: "https://github.com/puntopunto/xiu-rndfrk.git"
       target: "runner"
     image: "normkd/1688557675-test01:1.0.0"
     container_name: "${COMPOSE_PROJECT_NAME}.root"
