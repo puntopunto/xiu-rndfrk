@@ -13,7 +13,7 @@ services:
   # 1. Base streamer
   streamer:
     build:
-      context: "https://github.com/puntopunto/xiu-rndfrk.git"
+      context: "git@github.com:user/repo.git#ci"
       platforms:
         - linux/x86_64
       target: "runner"
@@ -25,8 +25,6 @@ services:
     volumes:
       # App config volume
       - "streamer_config:/app/config"
-    #TODO: check if field is conflicting with build stage.
-    # user: "appuser"
     environment:
       TZ: "Europe/Moscow"
     healthcheck:

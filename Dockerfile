@@ -145,8 +145,8 @@ ARG app_exec_perms="+x"
 #### Workload env
 ENV TZ=${TZ}
 #TODO: check other bins and full/short PATH with 'healthcheck'.
-# ENV PATH="${app_dir}:$PATH"
-ENV PATH=${app_dir}
+ENV PATH="${app_dir}:$PATH"
+# ENV PATH=${app_dir}
 ENV APP=${app}
 ENV APP_CONFIG=${app_config}
 
@@ -212,6 +212,6 @@ USER ${app_user}
 
 #TODO: check and uncomment linter overrides below (or fix and delete strings.)
 ## hadolint ignore=DL3025
-ENTRYPOINT [ ${APP} ]
+ENTRYPOINT [ "${APP}" ]
 ## hadolint ignore=DL3025
-CMD  [ "-c", ${APP_CONFIG} ]
+CMD  [ "-c", "${APP_CONFIG}" ]
