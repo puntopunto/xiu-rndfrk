@@ -19,6 +19,7 @@ services:
       target: "runner"
       args:
         TZ: "Africa/Nairobi"
+    # build: "https://github.com/puntopunto/xiu-rndfrk.git"
     image: "normkd/1688557675-test01:1.0.0"
     container_name: "${COMPOSE_PROJECT_NAME}.root"
     volumes:
