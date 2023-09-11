@@ -1,17 +1,20 @@
-COPY_CONF_FILES = sh ./update_project_conf.sh
+COPY_CONF_FILES = sh ./update_project_conf.sh;
 
 # if [ -f .env ]
 
 not_spport:
-	echo "input make <local|online|build|clean|check>"
+	echo "input make <local|online|build|clean|check>";
 
 # build local source codes
-local:
-	cd ./confs && $(COPY_CONF_FILES) "local"
+config_offline:
+	cd ./confs && $(COPY_CONF_FILES) "offline";
 
 # pull the online crates codes and build
-online:
-	cd ./confs && $(COPY_CONF_FILES) "online"
+config_online:
+	cd ./confs && $(COPY_CONF_FILES) "online";
+
+online_update:
+	cd ./confs && $(COPY_CONF_FILES) "online" && cargo update
 
 check:
 	cargo clippy --fix --allow-dirty --allow-no-vcs

@@ -17,7 +17,7 @@
 # ______________________________________________________________________________
 # ------------------------------------------------------------------------------
 ## Global args
-ARG builder_version="latest"
+ARG builder_version="alpine"
 ARG runner_version="latest"
 
 # ------------------------------------------------------------------------------
@@ -28,8 +28,8 @@ FROM rust:${builder_version} AS builder
 #### Builder env
 ARG TZ="Europe/Moscow"
 
-#### Alias for 'apk' package manager
-ARG apkq="apk --quiet --no-interactive --no-progress --no-cache"
+#### Alias for package manager
+ARG apkq='apk --quiet --no-interactive --no-progress --no-cache'
 
 #### Dirs
 ##### Builder
@@ -64,21 +64,32 @@ RUN ${apkq} upgrade --latest; `
     ${apkq} add --latest "openssl-dev" "make" "gcc" "musl-dev"; `
     ${apkq} cache clean && rm -rf "/var/cache/apk" "/etc/apk/cache"; `
     rustup update "stable"; `
+    # TODO: check lines below for needing.
+    # rustup component add "cargo-x86_64-unknown-linux-musl" `
+    #     "rust-std-x86_64-unknown-linux-musl" `
+    #     "rustc-x86_64-unknown-linux-musl"; `
+    # rustup toolchain install "stable-x86_64-unknown-linux-musl"; `
+    # rustup target add "x86_64-unknown-linux-musl" `
+    # rustup default "stable-x86_64-unknown-linux-musl"; `
     addgroup -S ${build_group}; `
     adduser -G "${build_group}" -D -S "${build_user}";
 
-#### Building
-##### CWD and switch user
-USER ${build_user}
+### Building
+#### CWD
 WORKDIR ${buildroot}
 
-##### Copying sources
+#### Copying sources and set perms
 # TODO: check if this need if run/build from git.
 # COPY --chown=${build_user}:${build_group} --chmod=${buildroot_perms} . .
+# TODO: check if script works, thing about to replace hardcoded line.
+# RUN find . -type f -name "*.sh" -exec chmod +x {} +;
+RUN chmod +x "confs/update_project_conf.sh"
 
-# Building
-RUN make local && make build;
-# Additional flags: "--quiet" "--release"
+##### Switch user
+# TODO: check why not works.
+# USER ${build_user}
+RUN make online && make build --quiet;
+# Additional flags: "--release"
 
 ### After-build steps.
 #### Copy default config files to shared volume
@@ -89,7 +100,6 @@ COPY ${source_config_dir} ${config_volume}
 ## 2. Run app
 # TODO: mount volume with workload configs and check size/layering.
 FROM alpine:${runner_version} AS runner
-# FROM alpine:${runner_version} AS preroll
 
 ### Args
 #### Dirs
@@ -101,8 +111,8 @@ ARG distribution="/build/target/release"
 ARG app_dir="/app"
 ARG app_config="/app/config/config.toml"
 
-#### Alias for 'apk' package manager
-ARG apkq="apk --quiet --no-interactive --no-progress --no-cache"
+#### Alias for package manager
+ARG apkq='apk --quiet --no-interactive --no-progress --no-cache'
 
 #### Apps
 ARG app="xiu"
@@ -118,7 +128,7 @@ ARG user_shell="/sbin/nologin"
 ARG user_home="/nonexistent"
 
 #### Builder env
-ARG timezone="Europe/Moscow"
+ARG TZ="Europe/Moscow"
 
 #### Healthcheck params
 ARG hc_count=5
@@ -134,7 +144,7 @@ ARG app_dir_perms=750
 ARG app_exec_perms="+x"
 
 #### Workload env
-ENV TZ=${timezone}
+ENV TZ=${TZ}
 # TODO: check other bins and full/short PATH with 'healthcheck'.
 # ENV PATH="${app_dir}:$PATH"
 ENV PATH=${app_dir}
@@ -162,7 +172,7 @@ COPY    --from=builder `
 # Remove unnecessary packs and delete cache
 RUN ${apkq} upgrade --latest; `
     ${apkq} add --latest "alpine-conf"; `
-    setup-timezone -i "${timezone}"; `
+    setup-timezone -i "${TZ}"; `
     addgroup -S "${appgroup}"; `
     adduser -G "${appgroup}" `
         -g "${user_gecos}" `
@@ -227,7 +237,7 @@ CMD  [ "-c", ${APP_CONFIG} ]
 # ENV APP=${app_fpath}
 # ENV APP_CONFIG=${app_config}
 
-# # COPY --from=preroll --chown=${app_owner}:${app_group} ${source_dir} /
+# # COPY --from=runner --chown=${app_owner}:${app_group} ${source_dir} ./
 
 # RUN --mount=from=runner,source=${source_dir},target=${app_dir} `
 #     chown ${app_owner} ${app_dir} `

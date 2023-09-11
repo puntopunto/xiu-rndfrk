@@ -7,17 +7,16 @@ fi
 MODE=$1
 
 copy_conf_files() {
-
-    cp "./$MODE/h264.Cargo.toml" "../library/codec/h264/Cargo.toml"
-    cp "./$MODE/mpegts.Cargo.toml" "../library/container/mpegts/Cargo.toml"
-    cp "./$MODE/flv.Cargo.toml" "../library/container/flv/Cargo.toml"
-    cp "./$MODE/streamhub.Cargo.toml" "../library/streamhub/Cargo.toml"
-    cp "./$MODE/hls.Cargo.toml" "../protocol/hls/Cargo.toml"
-    cp "./$MODE/httpflv.Cargo.toml" "../protocol/httpflv/Cargo.toml"
-    cp "./$MODE/rtmp.Cargo.toml" "../protocol/rtmp/Cargo.toml"
-    cp "./$MODE/rtsp.Cargo.toml" "../protocol/rtsp/Cargo.toml"
-    cp "./$MODE/pprtmp.Cargo.toml" "../application/xiu/Cargo.toml"
-    cp "./$MODE/xiu.Cargo.toml" "../application/xiu/Cargo.toml"
+    cp "$MODE/h264.Cargo.toml" "../library/codec/h264/Cargo.toml"
+    cp "$MODE/mpegts.Cargo.toml" "../library/container/mpegts/Cargo.toml"
+    cp "$MODE/flv.Cargo.toml" "../library/container/flv/Cargo.toml"
+    cp "$MODE/streamhub.Cargo.toml" "../library/streamhub/Cargo.toml"
+    cp "$MODE/hls.Cargo.toml" "../protocol/hls/Cargo.toml"
+    cp "$MODE/httpflv.Cargo.toml" "../protocol/httpflv/Cargo.toml"
+    cp "$MODE/rtmp.Cargo.toml" "../protocol/rtmp/Cargo.toml"
+    cp "$MODE/rtsp.Cargo.toml" "../protocol/rtsp/Cargo.toml"
+    cp "$MODE/pprtmp.Cargo.toml" "../application/xiu/Cargo.toml"
+    cp "$MODE/xiu.Cargo.toml" "../application/xiu/Cargo.toml"
 }
 
 # do some operations
