@@ -15,7 +15,7 @@ services:
   # 1. Base streamer
   streamer:
     build:
-      context: "git@github.com:user/repo.git#ci"
+      context: "git@github.com:puntopunto/xiu-rndfrk.git#ci"
       platforms:
         - linux/x86_64
       target: "runner"
