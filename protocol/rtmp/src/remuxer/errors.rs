@@ -1,11 +1,13 @@
+#![allow(non_local_definitions)]
 use {
-    crate::{
-        amf0::errors::Amf0WriteError, cache::errors::MetadataError, session::errors::SessionError,
-    },
+    crate::{cache::errors::MetadataError, session::errors::SessionError},
     bytesio::bytes_errors::{BytesReadError, BytesWriteError},
     failure::Fail,
     std::fmt,
+    streamhub::errors::StreamHubError,
     tokio::sync::broadcast::error::RecvError,
+    tokio::sync::oneshot::error::RecvError as OneshotRecvError,
+    xflv::amf0::errors::Amf0WriteError,
     xflv::errors::FlvMuxerError,
     xflv::errors::Mpeg4AvcHevcError,
 };
@@ -18,24 +20,30 @@ pub struct RtmpRemuxerError {
 pub enum RtmpRemuxerErrorValue {
     #[fail(display = "hls error")]
     Error,
-    #[fail(display = "session error:{}\n", _0)]
+    #[fail(display = "session error:{}", _0)]
     SessionError(#[cause] SessionError),
-    #[fail(display = "amf write error:{}\n", _0)]
+    #[fail(display = "amf write error:{}", _0)]
     Amf0WriteError(#[cause] Amf0WriteError),
-    #[fail(display = "metadata error:{}\n", _0)]
+    #[fail(display = "metadata error:{}", _0)]
     MetadataError(#[cause] MetadataError),
-    #[fail(display = "receive error:{}\n", _0)]
+    #[fail(display = "receive error:{}", _0)]
     RecvError(#[cause] RecvError),
-    #[fail(display = "bytes read error:{}\n", _0)]
+    #[fail(display = "bytes read error:{}", _0)]
     BytesReadError(#[cause] BytesReadError),
-    #[fail(display = "bytes write error:{}\n", _0)]
+    #[fail(display = "bytes write error:{}", _0)]
     BytesWriteError(#[cause] BytesWriteError),
-    #[fail(display = "mpeg avc error\n")]
+    #[fail(display = "mpeg avc error")]
     MpegAvcError(#[cause] Mpeg4AvcHevcError),
-    #[fail(display = "flv muxer error\n")]
+    #[fail(display = "flv muxer error")]
     FlvMuxerError(#[cause] FlvMuxerError),
-    #[fail(display = "stream hub event send error\n")]
+    #[fail(display = "stream hub event send error")]
     StreamHubEventSendErr,
+    #[fail(display = "event execute error: {}", _0)]
+    ChannelError(#[cause] StreamHubError),
+    #[fail(display = "tokio: oneshot receiver err: {}", _0)]
+    OneshotRecvError(#[cause] OneshotRecvError),
+    #[fail(display = "Channel receive error")]
+    ChannelRecvError,
 }
 impl From<RecvError> for RtmpRemuxerError {
     fn from(error: RecvError) -> Self {
@@ -97,6 +105,22 @@ impl From<FlvMuxerError> for RtmpRemuxerError {
     fn from(error: FlvMuxerError) -> Self {
         RtmpRemuxerError {
             value: RtmpRemuxerErrorValue::FlvMuxerError(error),
+        }
+    }
+}
+
+impl From<StreamHubError> for RtmpRemuxerError {
+    fn from(error: StreamHubError) -> Self {
+        RtmpRemuxerError {
+            value: RtmpRemuxerErrorValue::ChannelError(error),
+        }
+    }
+}
+
+impl From<OneshotRecvError> for RtmpRemuxerError {
+    fn from(error: OneshotRecvError) -> Self {
+        RtmpRemuxerError {
+            value: RtmpRemuxerErrorValue::OneshotRecvError(error),
         }
     }
 }

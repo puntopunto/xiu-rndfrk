@@ -1,4 +1,5 @@
 use rand::Rng;
+use serde::{Serialize, Serializer};
 use std::fmt;
 use std::time::SystemTime;
 
@@ -33,8 +34,17 @@ fn u8_to_enum(digit: u8) -> RandomDigitCount {
     }
 }
 
+impl Serialize for Uuid {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.to_string())
+    }
+}
+
 impl Uuid {
-    pub fn from_str2(uuid: &String) -> Option<Uuid> {
+    pub fn from_str2(uuid: &str) -> Option<Uuid> {
         let length = uuid.len();
         if !(10..=16).contains(&length) {
             return None;
@@ -109,6 +119,8 @@ impl fmt::Display for Uuid {
 
 #[cfg(test)]
 mod tests {
+    
+
     use super::Uuid;
 
     #[test]
@@ -116,6 +128,10 @@ mod tests {
         let id = Uuid::new(super::RandomDigitCount::Four);
 
         let s = id.to_string();
+
+        let serialized = serde_json::to_string(&id).unwrap();
+
+        println!("serialized:{serialized}");
 
         println!("{s}");
 

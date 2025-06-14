@@ -1,10 +1,10 @@
+#![allow(non_local_definitions)]
 use {
     failure::{Backtrace, Fail},
-    rtmp::{
-        amf0::errors::Amf0WriteError, cache::errors::MetadataError, session::errors::SessionError,
-    },
     std::fmt,
+    streamhub::errors::StreamHubError,
     tokio::sync::broadcast::error::RecvError,
+    tokio::sync::oneshot::error::RecvError as OneshotRecvError,
     xflv::errors::FlvDemuxerError,
     xmpegts::errors::MpegTsError,
 };
@@ -28,26 +28,14 @@ pub struct MediaError {
 pub enum MediaErrorValue {
     #[fail(display = "server error")]
     Error,
-    #[fail(display = "session error:{}\n", _0)]
-    SessionError(#[cause] SessionError),
-    #[fail(display = "amf write error:{}\n", _0)]
-    Amf0WriteError(#[cause] Amf0WriteError),
-    #[fail(display = "metadata error:{}\n", _0)]
-    MetadataError(#[cause] MetadataError),
-    #[fail(display = "flv demuxer error:{}\n", _0)]
+    #[fail(display = "channel recv error")]
+    ChannelRecvError,
+    #[fail(display = "flv demuxer error:{}", _0)]
     FlvDemuxerError(#[cause] FlvDemuxerError),
-    #[fail(display = "mpegts error:{}\n", _0)]
+    #[fail(display = "mpegts error:{}", _0)]
     MpegTsError(#[cause] MpegTsError),
-    #[fail(display = "write file error:{}\n", _0)]
+    #[fail(display = "write file error:{}", _0)]
     IOError(#[cause] std::io::Error),
-}
-
-impl From<SessionError> for MediaError {
-    fn from(error: SessionError) -> Self {
-        MediaError {
-            value: MediaErrorValue::SessionError(error),
-        }
-    }
 }
 
 impl From<FlvDemuxerError> for MediaError {
@@ -62,22 +50,6 @@ impl From<MpegTsError> for MediaError {
     fn from(error: MpegTsError) -> Self {
         MediaError {
             value: MediaErrorValue::MpegTsError(error),
-        }
-    }
-}
-
-impl From<Amf0WriteError> for MediaError {
-    fn from(error: Amf0WriteError) -> Self {
-        MediaError {
-            value: MediaErrorValue::Amf0WriteError(error),
-        }
-    }
-}
-
-impl From<MetadataError> for MediaError {
-    fn from(error: MetadataError) -> Self {
-        MediaError {
-            value: MediaErrorValue::MetadataError(error),
         }
     }
 }
@@ -114,18 +86,20 @@ pub struct HlsError {
 pub enum HlsErrorValue {
     #[fail(display = "hls error")]
     Error,
-    #[fail(display = "session error:{}\n", _0)]
-    SessionError(#[cause] SessionError),
-    #[fail(display = "amf write error:{}\n", _0)]
-    Amf0WriteError(#[cause] Amf0WriteError),
-    #[fail(display = "metadata error:{}\n", _0)]
-    MetadataError(#[cause] MetadataError),
-    #[fail(display = "flv demuxer error:{}\n", _0)]
+    #[fail(display = "channel recv error")]
+    ChannelRecvError,
+    #[fail(display = "channel error:{}", _0)]
+    ChannelError(#[cause] StreamHubError),
+    #[fail(display = "flv demuxer error:{}", _0)]
     FlvDemuxerError(#[cause] FlvDemuxerError),
-    #[fail(display = "media error:{}\n", _0)]
+    #[fail(display = "media error:{}", _0)]
     MediaError(#[cause] MediaError),
-    #[fail(display = "receive error:{}\n", _0)]
+    #[fail(display = "receive error:{}", _0)]
     RecvError(#[cause] RecvError),
+    #[fail(display = "tokio: oneshot receiver err: {}", _0)]
+    OneshotRecvError(#[cause] OneshotRecvError),
+    #[fail(display = "stream hub event send error")]
+    StreamHubEventSendErr,
 }
 impl From<RecvError> for HlsError {
     fn from(error: RecvError) -> Self {
@@ -143,14 +117,6 @@ impl From<MediaError> for HlsError {
     }
 }
 
-impl From<SessionError> for HlsError {
-    fn from(error: SessionError) -> Self {
-        HlsError {
-            value: HlsErrorValue::SessionError(error),
-        }
-    }
-}
-
 impl From<FlvDemuxerError> for HlsError {
     fn from(error: FlvDemuxerError) -> Self {
         HlsError {
@@ -159,18 +125,18 @@ impl From<FlvDemuxerError> for HlsError {
     }
 }
 
-impl From<Amf0WriteError> for HlsError {
-    fn from(error: Amf0WriteError) -> Self {
+impl From<StreamHubError> for HlsError {
+    fn from(error: StreamHubError) -> Self {
         HlsError {
-            value: HlsErrorValue::Amf0WriteError(error),
+            value: HlsErrorValue::ChannelError(error),
         }
     }
 }
 
-impl From<MetadataError> for HlsError {
-    fn from(error: MetadataError) -> Self {
+impl From<OneshotRecvError> for HlsError {
+    fn from(error: OneshotRecvError) -> Self {
         HlsError {
-            value: HlsErrorValue::MetadataError(error),
+            value: HlsErrorValue::OneshotRecvError(error),
         }
     }
 }

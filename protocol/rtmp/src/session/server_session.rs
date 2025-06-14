@@ -1,4 +1,6 @@
-use crate::chunk::packetizer::ChunkPacketizer;
+use commonlib::auth::SecretCarrier;
+
+use crate::chunk::{errors::UnpackErrorValue, packetizer::ChunkPacketizer};
 
 use {
     super::{
@@ -8,7 +10,6 @@ use {
         errors::{SessionError, SessionErrorValue},
     },
     crate::{
-        amf0::Amf0ValueType,
         chunk::{
             define::CHUNK_SIZE,
             unpacketizer::{ChunkUnpacketizer, UnpackResult},
@@ -27,13 +28,12 @@ use {
         bytes_writer::AsyncBytesWriter,
         bytesio::{TNetIO, TcpIO},
     },
+    commonlib::auth::Auth,
     indexmap::IndexMap,
     std::{sync::Arc, time::Duration},
-    streamhub::{
-        define::StreamHubEventSender,
-        utils::{RandomDigitCount, Uuid},
-    },
+    streamhub::define::StreamHubEventSender,
     tokio::{net::TcpStream, sync::Mutex},
+    xflv::amf0::Amf0ValueType,
 };
 
 enum ServerSessionState {
@@ -49,25 +49,27 @@ enum ServerSessionState {
 pub struct ServerSession {
     pub app_name: String,
     pub stream_name: String,
-    pub url_parameters: String,
+    pub query: Option<String>,
     io: Arc<Mutex<Box<dyn TNetIO + Send + Sync>>>,
     handshaker: HandshakeServer,
     unpacketizer: ChunkUnpacketizer,
     state: ServerSessionState,
     bytesio_data: BytesMut,
     has_remaing_data: bool,
-    /* Used to mark the subscriber's the data producer
-    in channels and delete it from map when unsubscribe
-    is called. */
-    pub session_id: Uuid,
     connect_properties: ConnectProperties,
     pub common: Common,
     /*configure how many gops will be cached.*/
     gop_num: usize,
+    auth: Option<Auth>,
 }
 
 impl ServerSession {
-    pub fn new(stream: TcpStream, event_producer: StreamHubEventSender, gop_num: usize) -> Self {
+    pub fn new(
+        stream: TcpStream,
+        event_producer: StreamHubEventSender,
+        gop_num: usize,
+        auth: Option<Auth>,
+    ) -> Self {
         let remote_addr = if let Ok(addr) = stream.peer_addr() {
             log::info!("server session: {}", addr.to_string());
             Some(addr)
@@ -81,7 +83,7 @@ impl ServerSession {
         Self {
             app_name: String::from(""),
             stream_name: String::from(""),
-            url_parameters: String::from(""),
+            query: None,
             io: Arc::clone(&net_io),
             handshaker: HandshakeServer::new(Arc::clone(&net_io)),
             unpacketizer: ChunkUnpacketizer::new(),
@@ -92,11 +94,12 @@ impl ServerSession {
                 SessionType::Server,
                 remote_addr,
             ),
-            session_id: Uuid::new(RandomDigitCount::Four),
+
             bytesio_data: BytesMut::new(),
             has_remaing_data: false,
             connect_properties: ConnectProperties::default(),
             gop_num,
+            auth,
         }
     }
 
@@ -161,11 +164,7 @@ impl ServerSession {
                 }
                 Err(err) => {
                     self.common
-                        .unpublish_to_channels(
-                            self.app_name.clone(),
-                            self.stream_name.clone(),
-                            self.session_id,
-                        )
+                        .unpublish_to_stream_hub(self.app_name.clone(), self.stream_name.clone())
                         .await?;
 
                     return Err(SessionError {
@@ -180,21 +179,29 @@ impl ServerSession {
         self.has_remaing_data = false;
 
         loop {
-            let result = self.unpacketizer.read_chunks();
+            match self.unpacketizer.read_chunks() {
+                Ok(rv) => {
+                    if let UnpackResult::Chunks(chunks) = rv {
+                        for chunk_info in chunks {
+                            let timestamp = chunk_info.message_header.timestamp;
+                            let msg_stream_id = chunk_info.message_header.msg_streamd_id;
 
-            if let Ok(rv) = result {
-                if let UnpackResult::Chunks(chunks) = rv {
-                    for chunk_info in chunks {
-                        let timestamp = chunk_info.message_header.timestamp;
-                        let msg_stream_id = chunk_info.message_header.msg_streamd_id;
-
-                        let mut msg = MessageParser::new(chunk_info).parse()?;
-                        self.process_messages(&mut msg, &msg_stream_id, &timestamp)
-                            .await?;
+                            if let Some(mut msg) = MessageParser::new(chunk_info).parse()? {
+                                self.process_messages(&mut msg, &msg_stream_id, &timestamp)
+                                    .await?;
+                            }
+                        }
                     }
                 }
-            } else {
-                break;
+                Err(err) => {
+                    if let UnpackErrorValue::CannotParse = err.value {
+                        self.common
+                            .unpublish_to_stream_hub(self.app_name.clone(), self.stream_name.clone())
+                            .await?;
+                        return Err(err)?;
+                    }
+                    break;
+                }
             }
         }
         Ok(())
@@ -205,11 +212,7 @@ impl ServerSession {
             Ok(_) => {}
             Err(err) => {
                 self.common
-                    .unsubscribe_from_channels(
-                        self.app_name.clone(),
-                        self.stream_name.clone(),
-                        self.session_id,
-                    )
+                    .unsubscribe_from_stream_hub(self.app_name.clone(), self.stream_name.clone())
                     .await?;
                 return Err(err);
             }
@@ -437,7 +440,11 @@ impl ServerSession {
 
         let app_name = command_obj.get("app");
         self.app_name = match app_name {
-            Some(Amf0ValueType::UTF8String(app)) => app.clone(),
+            Some(Amf0ValueType::UTF8String(app)) => {
+                // the value can weirdly have the query params, lets just remove it
+                // example: live/stream?token=123
+                app.split(&['?', '/']).next().unwrap_or(app).to_string()
+            }
             _ => {
                 return Err(SessionError {
                     value: SessionErrorValue::NoAppName,
@@ -482,11 +489,7 @@ impl ServerSession {
         stream_id: &f64,
     ) -> Result<(), SessionError> {
         self.common
-            .unpublish_to_channels(
-                self.app_name.clone(),
-                self.stream_name.clone(),
-                self.session_id,
-            )
+            .unpublish_to_stream_hub(self.app_name.clone(), self.stream_name.clone())
             .await?;
 
         let mut netstream = NetStreamWriter::new(Arc::clone(&self.io));
@@ -622,25 +625,36 @@ impl ServerSession {
 
         let raw_stream_name = stream_name.unwrap();
 
-        (self.stream_name, self.url_parameters) = RtmpUrlParser::default()
-            .set_raw_stream_name(raw_stream_name.clone())
-            .parse_raw_stream_name();
+        (self.stream_name, self.query) =
+            RtmpUrlParser::parse_stream_name_with_query(&raw_stream_name);
+        if let Some(auth) = &self.auth {
+            auth.authenticate(
+                &self.stream_name,
+                &self
+                    .query
+                    .as_ref()
+                    .map(|q| SecretCarrier::Query(q.to_string())),
+                true,
+            )?
+        }
+
+        let query = if let Some(query_val) = &self.query {
+            query_val.clone()
+        } else {
+            String::from("none")
+        };
 
         log::info!(
-            "[ S->C ] [stream is record]  app_name: {}, stream_name: {}, url parameters: {}",
+            "[ S->C ] [stream is record]  app_name: {}, stream_name: {}, query: {}",
             self.app_name,
             self.stream_name,
-            self.url_parameters
+            query
         );
 
         /*Now it can update the request url*/
         self.common.request_url = self.get_request_url(raw_stream_name);
         self.common
-            .subscribe_from_channels(
-                self.app_name.clone(),
-                self.stream_name.clone(),
-                self.session_id,
-            )
+            .subscribe_from_stream_hub(self.app_name.clone(), self.stream_name.clone())
             .await?;
 
         self.state = ServerSessionState::Play;
@@ -662,7 +676,7 @@ impl ServerSession {
             });
         }
 
-        let raw_stream_name = match other_values.remove(0) {
+        let stream_name_with_query = match other_values.remove(0) {
             Amf0ValueType::UTF8String(val) => val,
             _ => {
                 return Err(SessionError {
@@ -671,12 +685,41 @@ impl ServerSession {
             }
         };
 
-        (self.stream_name, self.url_parameters) = RtmpUrlParser::default()
-            .set_raw_stream_name(raw_stream_name.clone())
-            .parse_raw_stream_name();
+        if !stream_name_with_query.is_empty() {
+            (self.stream_name, self.query) =
+                RtmpUrlParser::parse_stream_name_with_query(&stream_name_with_query);
+        } else {
+            log::warn!("stream_name_with_query is empty, extracing info from swf_url instead...");
+            let mut url = RtmpUrlParser::new(
+                self.connect_properties
+                    .swf_url
+                    .clone()
+                    .unwrap_or("".to_string()),
+            );
+
+            match url.parse_url() {
+                Ok(_) => {
+                    self.stream_name = url.stream_name;
+                    self.query = url.query;
+                }
+                Err(e) => {
+                    log::warn!("Failed to parse swf_url: {e}");
+                }
+            }
+        }
+        if let Some(auth) = &self.auth {
+            auth.authenticate(
+                &self.stream_name,
+                &self
+                    .query
+                    .as_ref()
+                    .map(|q| SecretCarrier::Query(q.to_string())),
+                false,
+            )?
+        }
 
         /*Now it can update the request url*/
-        self.common.request_url = self.get_request_url(raw_stream_name);
+        self.common.request_url = self.get_request_url(stream_name_with_query);
 
         let _ = match other_values.remove(0) {
             Amf0ValueType::UTF8String(val) => val,
@@ -687,18 +730,24 @@ impl ServerSession {
             }
         };
 
+        let query = if let Some(query_val) = &self.query {
+            query_val.clone()
+        } else {
+            String::from("none")
+        };
+
         log::info!(
-            "[ S<-C ] [publish]  app_name: {}, stream_name: {}, url parameters: {}",
+            "[ S<-C ] [publish]  app_name: {}, stream_name: {}, query: {}",
             self.app_name,
             self.stream_name,
-            self.url_parameters
+            query
         );
 
         log::info!(
-            "[ S->C ] [stream begin]  app_name: {}, stream_name: {}, url parameters: {}",
+            "[ S->C ] [stream begin]  app_name: {}, stream_name: {}, query: {}",
             self.app_name,
             self.stream_name,
-            self.url_parameters
+            query
         );
 
         let mut event_messages = EventMessagesWriter::new(AsyncBytesWriter::new(self.io.clone()));
@@ -715,10 +764,9 @@ impl ServerSession {
         );
 
         self.common
-            .publish_to_channels(
+            .publish_to_stream_hub(
                 self.app_name.clone(),
                 self.stream_name.clone(),
-                self.session_id,
                 self.gop_num,
             )
             .await?;

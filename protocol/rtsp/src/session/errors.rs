@@ -1,10 +1,15 @@
+#![allow(non_local_definitions)]
 use {
     crate::rtp::errors::{PackerError, UnPackerError},
     bytesio::bytes_errors::BytesReadError,
     bytesio::{bytes_errors::BytesWriteError, bytesio_errors::BytesIOError},
+    commonlib::errors::AuthError,
     failure::{Backtrace, Fail},
     std::fmt,
+    std::io::Error,
     std::str::Utf8Error,
+    streamhub::errors::StreamHubError,
+    tokio::sync::oneshot::error::RecvError,
 };
 
 #[derive(Debug)]
@@ -14,22 +19,34 @@ pub struct SessionError {
 
 #[derive(Debug, Fail)]
 pub enum SessionErrorValue {
-    #[fail(display = "net io error: {}\n", _0)]
+    #[fail(display = "net io error: {}", _0)]
     BytesIOError(#[cause] BytesIOError),
-    #[fail(display = "bytes read error: {}\n", _0)]
+    #[fail(display = "bytes read error: {}", _0)]
     BytesReadError(#[cause] BytesReadError),
-    #[fail(display = "bytes write error: {}\n", _0)]
+    #[fail(display = "bytes write error: {}", _0)]
     BytesWriteError(#[cause] BytesWriteError),
-    #[fail(display = "Utf8Error: {}\n", _0)]
+    #[fail(display = "Utf8Error: {}", _0)]
     Utf8Error(#[cause] Utf8Error),
-    #[fail(display = "UnPackerError: {}\n", _0)]
+    #[fail(display = "UnPackerError: {}", _0)]
     UnPackerError(#[cause] UnPackerError),
-    #[fail(display = "stream hub event send error\n")]
+    #[fail(display = "stream hub event send error")]
     StreamHubEventSendErr,
-    #[fail(display = "cannot receive frame data from stream hub\n")]
+    #[fail(display = "cannot receive frame data from stream hub")]
     CannotReceiveFrameData,
-    #[fail(display = "pack error: {}\n", _0)]
+    #[fail(display = "pack error: {}", _0)]
     PackerError(#[cause] PackerError),
+    #[fail(display = "event execute error: {}", _0)]
+    ChannelError(#[cause] StreamHubError),
+    #[fail(display = "tokio: oneshot receiver err: {}", _0)]
+    RecvError(#[cause] RecvError),
+    #[fail(display = "auth err: {}", _0)]
+    AuthError(#[cause] AuthError),
+    #[fail(display = "Channel receive error")]
+    ChannelRecvError,
+    #[fail(display = "io error")]
+    IOError(#[cause] Error),
+    #[fail(display = "RTSP response status error")]
+    RtspResponseStatusError,
 }
 
 impl From<BytesIOError> for SessionError {
@@ -76,6 +93,38 @@ impl From<UnPackerError> for SessionError {
     fn from(error: UnPackerError) -> Self {
         SessionError {
             value: SessionErrorValue::UnPackerError(error),
+        }
+    }
+}
+
+impl From<StreamHubError> for SessionError {
+    fn from(error: StreamHubError) -> Self {
+        SessionError {
+            value: SessionErrorValue::ChannelError(error),
+        }
+    }
+}
+
+impl From<RecvError> for SessionError {
+    fn from(error: RecvError) -> Self {
+        SessionError {
+            value: SessionErrorValue::RecvError(error),
+        }
+    }
+}
+
+impl From<AuthError> for SessionError {
+    fn from(error: AuthError) -> Self {
+        SessionError {
+            value: SessionErrorValue::AuthError(error),
+        }
+    }
+}
+
+impl From<Error> for SessionError {
+    fn from(error: Error) -> Self {
+        SessionError {
+            value: SessionErrorValue::IOError(error),
         }
     }
 }

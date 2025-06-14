@@ -1,3 +1,4 @@
+#![allow(non_local_definitions)]
 use failure::{Backtrace, Fail};
 use std::fmt;
 use std::io;
@@ -9,10 +10,10 @@ pub enum BytesIOErrorValue {
     NotEnoughBytes,
     #[fail(display = "empty stream")]
     EmptyStream,
-    #[fail(display = "io error\n")]
+    #[fail(display = "io error")]
     IOError(io::Error),
-    #[fail(display = "time out error\n")]
-    TimeoutError,
+    #[fail(display = "time out error")]
+    TimeoutError(tokio::time::error::Elapsed),
     #[fail(display = "none return")]
     NoneReturn,
 }

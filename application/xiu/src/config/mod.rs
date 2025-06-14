@@ -1,5 +1,6 @@
 pub mod errors;
 
+use commonlib::auth::AuthAlgorithm;
 use errors::ConfigError;
 use serde_derive::Deserialize;
 use std::fs;
@@ -9,10 +10,12 @@ use std::vec::Vec;
 pub struct Config {
     pub rtmp: Option<RtmpConfig>,
     pub rtsp: Option<RtspConfig>,
+    pub webrtc: Option<WebRTCConfig>,
     pub httpflv: Option<HttpFlvConfig>,
     pub hls: Option<HlsConfig>,
     pub httpapi: Option<HttpApiConfig>,
     pub httpnotify: Option<HttpNotifierConfig>,
+    pub authsecret: AuthSecretConfig,
     pub log: Option<LogConfig>,
 }
 
@@ -20,6 +23,7 @@ impl Config {
     pub fn new(
         rtmp_port: usize,
         rtsp_port: usize,
+        webrtc_port: usize,
         httpflv_port: usize,
         hls_port: usize,
         log_level: String,
@@ -32,6 +36,7 @@ impl Config {
                 port: rtmp_port,
                 pull: None,
                 push: None,
+                auth: None,
             });
         }
 
@@ -39,7 +44,18 @@ impl Config {
         if rtsp_port > 0 {
             rtsp_config = Some(RtspConfig {
                 enabled: true,
+                relay_enabled: false,
                 port: rtsp_port,
+                auth: None,
+            });
+        }
+
+        let mut webrtc_config: Option<WebRTCConfig> = None;
+        if webrtc_port > 0 {
+            webrtc_config = Some(WebRTCConfig {
+                enabled: true,
+                port: webrtc_port,
+                auth: None,
             });
         }
 
@@ -48,6 +64,7 @@ impl Config {
             httpflv_config = Some(HttpFlvConfig {
                 enabled: true,
                 port: httpflv_port,
+                auth: None,
             });
         }
 
@@ -57,6 +74,7 @@ impl Config {
                 enabled: true,
                 port: hls_port,
                 need_record: false,
+                auth: None,
             });
         }
 
@@ -68,10 +86,12 @@ impl Config {
         Self {
             rtmp: rtmp_config,
             rtsp: rtsp_config,
+            webrtc: webrtc_config,
             httpflv: httpflv_config,
             hls: hls_config,
             httpapi: None,
             httpnotify: None,
+            authsecret: AuthSecretConfig::default(),
             log: log_config,
         }
     }
@@ -84,6 +104,7 @@ pub struct RtmpConfig {
     pub gop_num: Option<usize>,
     pub pull: Option<RtmpPullConfig>,
     pub push: Option<Vec<RtmpPushConfig>>,
+    pub auth: Option<AuthConfig>,
 }
 #[derive(Debug, Deserialize, Clone)]
 pub struct RtmpPullConfig {
@@ -102,12 +123,22 @@ pub struct RtmpPushConfig {
 pub struct RtspConfig {
     pub enabled: bool,
     pub port: usize,
+    pub auth: Option<AuthConfig>,
+    pub relay_enabled: bool,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct WebRTCConfig {
+    pub enabled: bool,
+    pub port: usize,
+    pub auth: Option<AuthConfig>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct HttpFlvConfig {
     pub enabled: bool,
     pub port: usize,
+    pub auth: Option<AuthConfig>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -116,6 +147,7 @@ pub struct HlsConfig {
     pub port: usize,
     //record or not
     pub need_record: bool,
+    pub auth: Option<AuthConfig>,
 }
 
 pub enum LogLevel {
@@ -153,6 +185,20 @@ pub struct HttpNotifierConfig {
     pub on_stop: Option<String>,
 }
 
+#[derive(Debug, Deserialize, Clone, Default)]
+pub struct AuthSecretConfig {
+    pub key: String,
+    pub password: String,
+    pub push_password: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Clone, Default)]
+pub struct AuthConfig {
+    pub pull_enabled: bool,
+    pub push_enabled: Option<bool>,
+    pub algorithm: AuthAlgorithm,
+}
+
 pub fn load(cfg_path: &String) -> Result<Config, ConfigError> {
     let content = fs::read_to_string(cfg_path)?;
     let decoded_config = toml::from_str(&content[..]).unwrap();
@@ -161,21 +207,19 @@ pub fn load(cfg_path: &String) -> Result<Config, ConfigError> {
 
 #[test]
 fn test_toml_parse() {
-    // let path = env::current_dir();
-    // match path {
-    //     Ok(val) => println!("The current directory is {}\n", val.display()),
-    //     Err(err) => print!("{}\n", err),
-    // }
+    let path = std::env::current_dir();
+    match path {
+        Ok(val) => println!("The current directory is {}\n", val.display()),
+        Err(err) => println!("{}", err),
+    }
 
-    let str = fs::read_to_string(
-        "/Users/zexu/github/xiu_live_rust/application/xiu/src/config/config.toml",
-    );
+    let str = fs::read_to_string("./src/config/examples/config1.toml");
 
     match str {
         Ok(val) => {
             println!("++++++{val}\n");
             let decoded: Config = toml::from_str(&val[..]).unwrap();
-
+            println!("whole config: {:?}", decoded);
             let rtmp = decoded.httpnotify;
 
             if let Some(val) = rtmp {

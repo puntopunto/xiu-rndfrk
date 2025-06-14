@@ -1,6 +1,3 @@
-extern crate hyper;
-extern crate rtmp;
-
 pub mod define;
 pub mod errors;
 pub mod httpflv;

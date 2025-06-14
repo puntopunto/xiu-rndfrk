@@ -1,3 +1,4 @@
+#![allow(non_local_definitions)]
 use {
     failure::{Backtrace, Fail},
     bytesio::bytes_errors::{BytesReadError, BytesWriteError},
@@ -12,7 +13,7 @@ pub struct ControlMessagesError {
 #[derive(Debug, Fail)]
 pub enum ControlMessagesErrorValue {
     //Amf0WriteError(Amf0WriteError),
-    #[fail(display = "bytes write error: {}\n", _0)]
+    #[fail(display = "bytes write error: {}", _0)]
     BytesWriteError(BytesWriteError),
 }
 
@@ -47,7 +48,7 @@ pub struct ProtocolControlMessageReaderError {
 
 #[derive(Debug, Fail)]
 pub enum ProtocolControlMessageReaderErrorValue {
-    #[fail(display = "bytes read error: {}\n", _0)]
+    #[fail(display = "bytes read error: {}", _0)]
     BytesReadError(BytesReadError),
 }
 

@@ -1,8 +1,9 @@
+#![allow(non_local_definitions)]
 use {
-    crate::amf0::errors::Amf0WriteError,
-    failure::{Backtrace, Fail},
     bytesio::bytes_errors::{BytesReadError, BytesWriteError},
+    failure::{Backtrace, Fail},
     std::fmt,
+    xflv::amf0::errors::Amf0WriteError,
 };
 
 #[derive(Debug)]
@@ -12,11 +13,11 @@ pub struct EventMessagesError {
 
 #[derive(Debug, Fail)]
 pub enum EventMessagesErrorValue {
-    #[fail(display = "amf0 write error: {}\n", _0)]
+    #[fail(display = "amf0 write error: {}", _0)]
     Amf0WriteError(Amf0WriteError),
-    #[fail(display = "bytes write error: {}\n", _0)]
+    #[fail(display = "bytes write error: {}", _0)]
     BytesWriteError(BytesWriteError),
-    #[fail(display = "bytes read error: {}\n", _0)]
+    #[fail(display = "bytes read error: {}", _0)]
     BytesReadError(BytesReadError),
     #[fail(display = "unknow event message type")]
     UnknowEventMessageType,

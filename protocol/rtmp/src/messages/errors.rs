@@ -1,27 +1,28 @@
+#![allow(non_local_definitions)]
 use {
     crate::{
-        amf0::errors::Amf0ReadError,
         protocol_control_messages::errors::ProtocolControlMessageReaderError,
         user_control_messages::errors::EventMessagesError,
     },
-    failure::{Backtrace, Fail},
     bytesio::bytes_errors::BytesReadError,
+    failure::{Backtrace, Fail},
     std::fmt,
+    xflv::amf0::errors::Amf0ReadError,
 };
 
 #[derive(Debug, Fail)]
 pub enum MessageErrorValue {
-    #[fail(display = "bytes read error: {}\n", _0)]
+    #[fail(display = "bytes read error: {}", _0)]
     BytesReadError(BytesReadError),
     #[fail(display = "unknow read state")]
     UnknowReadState,
-    #[fail(display = "amf0 read error: {}\n", _0)]
+    #[fail(display = "amf0 read error: {}", _0)]
     Amf0ReadError(Amf0ReadError),
     #[fail(display = "unknown message type")]
     UnknowMessageType,
-    #[fail(display = "protocol control message read error: {}\n", _0)]
+    #[fail(display = "protocol control message read error: {}", _0)]
     ProtocolControlMessageReaderError(ProtocolControlMessageReaderError),
-    #[fail(display = "user control message read error: {}\n", _0)]
+    #[fail(display = "user control message read error: {}", _0)]
     EventMessagesError(EventMessagesError),
 }
 

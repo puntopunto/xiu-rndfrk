@@ -1,19 +1,15 @@
+# Glob vars
 COPY_CONF_FILES = sh ./update_project_conf.sh;
 
-# if [ -f .env ]
-
-not_spport:
-	echo "input make <local|online|build|clean|check>";
-
 # build local source codes
-config_offline:
+local:
 	cd ./confs && $(COPY_CONF_FILES) "offline";
 
 # pull the online crates codes and build
-config_online:
+online:
 	cd ./confs && $(COPY_CONF_FILES) "online";
 
-update_dependencies:
+update:
 	cargo update
 
 check:
@@ -27,3 +23,6 @@ build:
 
 build-musl:
 	cargo build --target "x86_64-unknown-linux-musl"
+
+not_spport:
+	echo "input make <local|online|update|build|build-musl|clean|check>";

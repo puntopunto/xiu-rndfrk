@@ -10,10 +10,6 @@ use bytesio::bytesio::TNetIO;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-pub trait Track {
-    fn create_packer(&mut self, writer: Arc<Mutex<Box<dyn TNetIO + Send + Sync>>>);
-    fn create_unpacker(&mut self);
-}
 #[derive(Debug, Clone, Default, Hash, Eq, PartialEq)]
 pub enum TrackType {
     #[default]
@@ -66,8 +62,9 @@ impl RtspTrack {
             loop {
                 match rtp_io.read().await {
                     Ok(data) => {
+                        //log::info!("read rtp data");
                         reader.extend_from_slice(&data[..]);
-                        if let Err(err) = rtp_channel_in.on_packet(&mut reader) {
+                        if let Err(err) = rtp_channel_in.on_packet(&mut reader).await {
                             log::error!("rtp_receive_loop on_packet error: {}", err);
                         }
                     }
@@ -115,7 +112,7 @@ impl RtspTrack {
     }
 
     pub async fn on_rtp(&mut self, reader: &mut BytesReader) -> Result<(), UnPackerError> {
-        self.rtp_channel.lock().await.on_packet(reader)
+        self.rtp_channel.lock().await.on_packet(reader).await
     }
 
     pub async fn on_rtcp(

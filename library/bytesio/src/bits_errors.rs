@@ -1,3 +1,4 @@
+#![allow(non_local_definitions)]
 use super::bytes_errors::BytesReadError;
 use super::bytes_errors::BytesWriteError;
 use failure::{Backtrace, Fail};
@@ -5,15 +6,15 @@ use std::fmt;
 
 #[derive(Debug, Fail)]
 pub enum BitErrorValue {
-    #[fail(display = "bytes read error\n")]
+    #[fail(display = "bytes read error")]
     BytesReadError(BytesReadError),
-    #[fail(display = "bytes write error\n")]
+    #[fail(display = "bytes write error")]
     BytesWriteError(BytesWriteError),
-    #[fail(display = "the size is bigger than 64\n")]
+    #[fail(display = "the size is bigger than 64")]
     TooBig,
-    #[fail(display = "cannot write the whole 8 bits\n")]
+    #[fail(display = "cannot write the whole 8 bits")]
     CannotWrite8Bit,
-    #[fail(display = "cannot read byte\n")]
+    #[fail(display = "cannot read byte")]
     CannotReadByte,
 }
 #[derive(Debug)]

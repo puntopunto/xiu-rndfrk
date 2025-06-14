@@ -1,3 +1,4 @@
+#![allow(non_local_definitions)]
 use {
     failure::{Backtrace, Fail},
     std::fmt,
@@ -29,9 +30,9 @@ impl fmt::Display for PackerError {
 
 #[derive(Debug, Fail)]
 pub enum PackerErrorValue {
-    #[fail(display = "bytes read error: {}\n", _0)]
+    #[fail(display = "bytes read error: {}", _0)]
     BytesReadError(BytesReadError),
-    #[fail(display = "bytes write error: {}\n", _0)]
+    #[fail(display = "bytes write error: {}", _0)]
     BytesWriteError(#[cause] BytesWriteError),
 }
 
@@ -58,9 +59,9 @@ pub struct UnPackerError {
 
 #[derive(Debug, Fail)]
 pub enum UnPackerErrorValue {
-    #[fail(display = "bytes read error: {}\n", _0)]
+    #[fail(display = "bytes read error: {}", _0)]
     BytesReadError(BytesReadError),
-    #[fail(display = "bytes write error: {}\n", _0)]
+    #[fail(display = "bytes write error: {}", _0)]
     BytesWriteError(#[cause] BytesWriteError),
 }
 

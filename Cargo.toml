@@ -1,9 +1,11 @@
 [workspace]
+resolver = "1"
 members = [
   "protocol/rtmp",
   "protocol/httpflv",
   "protocol/hls",
   "protocol/rtsp",
+  "protocol/webrtc",
   "library/bytesio",
   "application/xiu",
   "application/http-server",
@@ -13,4 +15,9 @@ members = [
   "library/codec/h264",
   "library/logger",
   "library/streamhub",
+  "library/common",
 ]
+
+[profile.release]
+codegen-units = 1
+lto = true

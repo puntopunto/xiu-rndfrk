@@ -1,3 +1,4 @@
+#![allow(non_local_definitions)]
 use bytesio::bytes_errors::BytesReadError;
 use bytesio::bytes_errors::BytesWriteError;
 use failure::Fail;
@@ -9,9 +10,9 @@ pub struct RtcpError {
 
 #[derive(Debug, Fail)]
 pub enum RtcpErrorValue {
-    #[fail(display = "bytes read error: {}\n", _0)]
+    #[fail(display = "bytes read error: {}", _0)]
     BytesReadError(BytesReadError),
-    #[fail(display = "bytes write error: {}\n", _0)]
+    #[fail(display = "bytes write error: {}", _0)]
     BytesWriteError(BytesWriteError),
 }
 

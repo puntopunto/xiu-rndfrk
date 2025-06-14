@@ -1,3 +1,4 @@
+#![allow(non_local_definitions)]
 use {
     failure::Fail,
     std::{fmt, io::Error},
@@ -17,12 +18,12 @@ impl fmt::Display for ClientError {
 
 #[derive(Debug, Fail)]
 pub enum PushClientErrorValue {
-    #[fail(display = "receive error\n")]
+    #[fail(display = "receive error")]
     ReceiveError(RecvError),
 
-    #[fail(display = "send error\n")]
+    #[fail(display = "send error")]
     SendError,
-    #[fail(display = "io error\n")]
+    #[fail(display = "io error")]
     IOError(Error),
 }
 

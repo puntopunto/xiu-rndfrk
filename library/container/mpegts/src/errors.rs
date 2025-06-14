@@ -1,3 +1,4 @@
+#![allow(non_local_definitions)]
 use {
     bytesio::bytes_errors::{BytesReadError, BytesWriteError},
     failure::{Backtrace, Fail},
@@ -7,25 +8,25 @@ use {
 
 #[derive(Debug, Fail)]
 pub enum MpegTsErrorValue {
-    #[fail(display = "bytes read error\n")]
+    #[fail(display = "bytes read error")]
     BytesReadError(BytesReadError),
 
-    #[fail(display = "bytes write error\n")]
+    #[fail(display = "bytes write error")]
     BytesWriteError(BytesWriteError),
 
-    #[fail(display = "io error\n")]
+    #[fail(display = "io error")]
     IOError(Error),
 
-    #[fail(display = "program number exists\n")]
+    #[fail(display = "program number exists")]
     ProgramNumberExists,
 
-    #[fail(display = "pmt count execeed\n")]
+    #[fail(display = "pmt count execeed")]
     PmtCountExeceed,
 
-    #[fail(display = "stream count execeed\n")]
+    #[fail(display = "stream count execeed")]
     StreamCountExeceed,
 
-    #[fail(display = "stream not found\n")]
+    #[fail(display = "stream not found")]
     StreamNotFound,
 }
 #[derive(Debug)]

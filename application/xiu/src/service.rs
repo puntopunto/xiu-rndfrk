@@ -1,10 +1,15 @@
+use crate::config::{AuthConfig, AuthSecretConfig};
+use commonlib::auth::AuthType;
 use rtmp::remuxer::RtmpRemuxer;
+use std::sync::Arc;
+use xrtsp::relay::pull_client_manager::RtspPullClientManager;
 
 use {
     super::api,
     super::config::Config,
     //https://rustcc.cn/article?id=6dcbf032-0483-4980-8bfe-c64a7dfb33c7
     anyhow::Result,
+    commonlib::auth::Auth,
     hls::remuxer::HlsRemuxer,
     hls::server as hls_server,
     httpflv::server as httpflv_server,
@@ -12,9 +17,10 @@ use {
         relay::{pull_client::PullClient, push_client::PushClient},
         rtmp::RtmpServer,
     },
-    streamhub::{notify::Notifier, StreamsHub},
+    streamhub::{notify::http::HttpNotifier, notify::Notifier, StreamsHub},
     tokio,
     xrtsp::rtsp::RtspServer,
+    xwebrtc::webrtc::WebRTCServer,
 };
 
 pub struct Service {
@@ -26,17 +32,47 @@ impl Service {
         Service { cfg }
     }
 
+    fn gen_auth(auth_config: &Option<AuthConfig>, authsecret: &AuthSecretConfig) -> Option<Auth> {
+        if let Some(cfg) = auth_config {
+            let auth_type = if let Some(push_enabled) = cfg.push_enabled {
+                if push_enabled && cfg.pull_enabled {
+                    AuthType::Both
+                } else if !push_enabled && !cfg.pull_enabled {
+                    AuthType::None
+                } else if push_enabled && !cfg.pull_enabled {
+                    AuthType::Push
+                } else {
+                    AuthType::Pull
+                }
+            } else {
+                match cfg.pull_enabled {
+                    true => AuthType::Pull,
+                    false => AuthType::None,
+                }
+            };
+            Some(Auth::new(
+                authsecret.key.clone(),
+                authsecret.password.clone(),
+                authsecret.push_password.clone(),
+                cfg.algorithm.clone(),
+                auth_type,
+            ))
+        } else {
+            None
+        }
+    }
+
     pub async fn run(&mut self) -> Result<()> {
-        let notifier = if let Some(httpnotifier) = &self.cfg.httpnotify {
+        let notifier: Option<Arc<dyn Notifier>> = if let Some(httpnotifier) = &self.cfg.httpnotify {
             if !httpnotifier.enabled {
                 None
             } else {
-                Some(Notifier::new(
+                Some(Arc::new(HttpNotifier::new(
                     httpnotifier.on_publish.clone(),
                     httpnotifier.on_unpublish.clone(),
                     httpnotifier.on_play.clone(),
                     httpnotifier.on_stop.clone(),
-                ))
+                )))
             }
         } else {
             None
@@ -48,6 +84,7 @@ impl Service {
         self.start_hls(&mut stream_hub).await?;
         self.start_rtmp(&mut stream_hub).await?;
         self.start_rtsp(&mut stream_hub).await?;
+        self.start_webrtc(&mut stream_hub).await?;
         self.start_http_api_server(&mut stream_hub).await?;
         self.start_rtmp_remuxer(&mut stream_hub).await?;
 
@@ -109,7 +146,7 @@ impl Service {
                     );
                     tokio::spawn(async move {
                         if let Err(err) = push_client.run().await {
-                            log::error!("push client error {}\n", err);
+                            log::error!("push client error {}", err);
                         }
                     });
 
@@ -133,7 +170,7 @@ impl Service {
 
                     tokio::spawn(async move {
                         if let Err(err) = pull_client.run().await {
-                            log::error!("pull client error {}\n", err);
+                            log::error!("pull client error {}", err);
                         }
                     });
 
@@ -144,10 +181,11 @@ impl Service {
             let listen_port = rtmp_cfg_value.port;
             let address = format!("0.0.0.0:{listen_port}");
 
-            let mut rtmp_server = RtmpServer::new(address, producer, gop_num);
+            let auth = Self::gen_auth(&rtmp_cfg_value.auth, &self.cfg.authsecret);
+            let mut rtmp_server = RtmpServer::new(address, producer, gop_num, auth);
             tokio::spawn(async move {
                 if let Err(err) = rtmp_server.run().await {
-                    log::error!("rtmp server error: {}\n", err);
+                    log::error!("rtmp server error: {}", err);
                 }
             });
         }
@@ -156,14 +194,22 @@ impl Service {
     }
 
     async fn start_rtmp_remuxer(&mut self, stream_hub: &mut StreamsHub) -> Result<()> {
-        //The remuxer now is used for rtsp2rtmp, so both rtsp/rtmp cfg need to be enabled.
+        //The remuxer now is used for rtsp2rtmp/whip2rtmp, so both rtsp(or whip)/rtmp cfg need to be enabled.
         let mut rtsp_enabled = false;
         if let Some(rtsp_cfg_value) = &self.cfg.rtsp {
             if rtsp_cfg_value.enabled {
                 rtsp_enabled = true;
             }
         }
-        if !rtsp_enabled {
+
+        let mut whip_enabled = false;
+        if let Some(whip_cfg_value) = &self.cfg.webrtc {
+            if whip_cfg_value.enabled {
+                whip_enabled = true;
+            }
+        }
+
+        if !rtsp_enabled && !whip_enabled {
             return Ok(());
         }
 
@@ -184,7 +230,7 @@ impl Service {
 
         tokio::spawn(async move {
             if let Err(err) = remuxer.run().await {
-                log::error!("rtmp remuxer server error: {}\n", err);
+                log::error!("rtmp remuxer server error: {}", err);
             }
         });
         Ok(())
@@ -203,10 +249,49 @@ impl Service {
             let listen_port = rtsp_cfg_value.port;
             let address = format!("0.0.0.0:{listen_port}");
 
-            let mut rtsp_server = RtspServer::new(address, producer);
+            let auth = Self::gen_auth(&rtsp_cfg_value.auth, &self.cfg.authsecret);
+            let mut rtsp_server = RtspServer::new(address, producer, auth);
             tokio::spawn(async move {
                 if let Err(err) = rtsp_server.run().await {
-                    log::error!("rtsp server error: {}\n", err);
+                    log::error!("rtsp server error: {}", err);
+                }
+            });
+
+            if rtsp_cfg_value.relay_enabled {
+                let mut rtsp_relay_manager = RtspPullClientManager::new(
+                    stream_hub.get_client_event_consumer(),
+                    stream_hub.get_hub_event_sender(),
+                );
+
+                tokio::spawn(async move {
+                    if let Err(err) = rtsp_relay_manager.run().await {
+                        log::error!("rtsp relay manager error: {}", err);
+                    }
+                });
+            }
+        }
+
+        Ok(())
+    }
+
+    async fn start_webrtc(&mut self, stream_hub: &mut StreamsHub) -> Result<()> {
+        let webrtc_cfg = &self.cfg.webrtc;
+
+        if let Some(webrtc_cfg_value) = webrtc_cfg {
+            if !webrtc_cfg_value.enabled {
+                return Ok(());
+            }
+
+            let producer = stream_hub.get_hub_event_sender();
+
+            let listen_port = webrtc_cfg_value.port;
+            let address = format!("0.0.0.0:{listen_port}");
+
+            let auth = Self::gen_auth(&webrtc_cfg_value.auth, &self.cfg.authsecret);
+            let mut webrtc_server = WebRTCServer::new(address, producer, auth);
+            tokio::spawn(async move {
+                if let Err(err) = webrtc_server.run().await {
+                    log::error!("webrtc server error: {}", err);
                 }
             });
         }
@@ -224,9 +309,10 @@ impl Service {
             let port = httpflv_cfg_value.port;
             let event_producer = stream_hub.get_hub_event_sender();
 
+            let auth = Self::gen_auth(&httpflv_cfg_value.auth, &self.cfg.authsecret);
             tokio::spawn(async move {
-                if let Err(err) = httpflv_server::run(event_producer, port).await {
-                    log::error!("httpflv server error: {}\n", err);
+                if let Err(err) = httpflv_server::run(event_producer, port, auth).await {
+                    log::error!("httpflv server error: {}", err);
                 }
             });
         }
@@ -252,15 +338,15 @@ impl Service {
 
             tokio::spawn(async move {
                 if let Err(err) = hls_remuxer.run().await {
-                    log::error!("rtmp event processor error: {}\n", err);
+                    log::error!("rtmp event processor error: {}", err);
                 }
             });
 
             let port = hls_cfg_value.port;
-
+            let auth = Self::gen_auth(&hls_cfg_value.auth, &self.cfg.authsecret);
             tokio::spawn(async move {
-                if let Err(err) = hls_server::run(port).await {
-                    log::error!("hls server error: {}\n", err);
+                if let Err(err) = hls_server::run(port, auth).await {
+                    log::error!("hls server error: {}", err);
                 }
             });
             stream_hub.set_hls_enabled(true);

@@ -1,51 +1,97 @@
+#![allow(non_local_definitions)]
 use bytesio::bytes_errors::BytesReadError;
 use bytesio::bytes_errors::BytesWriteError;
+use failure::Backtrace;
+use serde_json::error::Error;
+use tokio::sync::oneshot::error::RecvError;
 
 use {failure::Fail, std::fmt};
 #[derive(Debug, Fail)]
-pub enum ChannelErrorValue {
-    #[fail(display = "no app name\n")]
+pub enum StreamHubErrorValue {
+    #[fail(display = "no app name")]
     NoAppName,
-    #[fail(display = "no stream name\n")]
+    #[fail(display = "no stream name")]
     NoStreamName,
-    #[fail(display = "no app or stream name\n")]
+    #[fail(display = "no app or stream name")]
     NoAppOrStreamName,
-    #[fail(display = "exists\n")]
+    #[fail(display = "exists")]
     Exists,
-    #[fail(display = "send error\n")]
+    #[fail(display = "send error")]
     SendError,
-    #[fail(display = "send video error\n")]
+    #[fail(display = "send video error")]
     SendVideoError,
-    #[fail(display = "send audio error\n")]
+    #[fail(display = "send audio error")]
     SendAudioError,
-    #[fail(display = "bytes read error\n")]
+    #[fail(display = "bytes read error")]
     BytesReadError(BytesReadError),
-    #[fail(display = "bytes write error\n")]
+    #[fail(display = "bytes write error")]
     BytesWriteError(BytesWriteError),
+    #[fail(display = "not correct data sender type")]
+    NotCorrectDataSenderType,
+    #[fail(display = "Tokio oneshot recv error")]
+    RecvError(RecvError),
+    #[fail(display = "Serde json error")]
+    SerdeError(Error),
+    #[fail(display = "the client session error: {}", _0)]
+    RtspClientSessionError(String),
 }
 #[derive(Debug)]
-pub struct ChannelError {
-    pub value: ChannelErrorValue,
+pub struct StreamHubError {
+    pub value: StreamHubErrorValue,
 }
 
-impl fmt::Display for ChannelError {
+impl fmt::Display for StreamHubError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(&self.value, f)
     }
 }
 
-impl From<BytesReadError> for ChannelError {
+impl Fail for StreamHubError {
+    fn cause(&self) -> Option<&dyn Fail> {
+        self.value.cause()
+    }
+
+    fn backtrace(&self) -> Option<&Backtrace> {
+        self.value.backtrace()
+    }
+}
+
+impl From<BytesReadError> for StreamHubError {
     fn from(error: BytesReadError) -> Self {
-        ChannelError {
-            value: ChannelErrorValue::BytesReadError(error),
+        StreamHubError {
+            value: StreamHubErrorValue::BytesReadError(error),
         }
     }
 }
 
-impl From<BytesWriteError> for ChannelError {
+impl From<BytesWriteError> for StreamHubError {
     fn from(error: BytesWriteError) -> Self {
-        ChannelError {
-            value: ChannelErrorValue::BytesWriteError(error),
+        StreamHubError {
+            value: StreamHubErrorValue::BytesWriteError(error),
+        }
+    }
+}
+
+impl From<RecvError> for StreamHubError {
+    fn from(error: RecvError) -> Self {
+        StreamHubError {
+            value: StreamHubErrorValue::RecvError(error),
+        }
+    }
+}
+
+impl From<Error> for StreamHubError {
+    fn from(error: Error) -> Self {
+        StreamHubError {
+            value: StreamHubErrorValue::SerdeError(error),
+        }
+    }
+}
+
+impl From<String> for StreamHubError {
+    fn from(error: String) -> Self {
+        StreamHubError {
+            value: StreamHubErrorValue::RtspClientSessionError(error),
         }
     }
 }

@@ -1,11 +1,10 @@
+#![allow(non_local_definitions)]
+use streamhub::errors::StreamHubError;
+
 use {
-    failure::Fail,
-    futures::channel::mpsc::SendError,
+    failure::Fail, futures::channel::mpsc::SendError, std::fmt,
+    tokio::sync::oneshot::error::RecvError, xflv::amf0::errors::Amf0WriteError,
     xflv::errors::FlvMuxerError,
-    rtmp::{
-        amf0::errors::Amf0WriteError, cache::errors::MetadataError, session::errors::SessionError,
-    },
-    std::fmt,
 };
 
 #[derive(Debug)]
@@ -27,24 +26,20 @@ pub struct HttpFLvError {
 pub enum HttpFLvErrorValue {
     #[fail(display = "server error")]
     Error,
-    #[fail(display = "session error")]
-    SessionError(SessionError),
     #[fail(display = "flv muxer error")]
     MuxerError(FlvMuxerError),
     #[fail(display = "amf write error")]
     Amf0WriteError(Amf0WriteError),
     #[fail(display = "metadata error")]
-    MetadataError(MetadataError),
-    #[fail(display = "tokio mpsc error")]
     MpscSendError(SendError),
-}
-
-impl From<SessionError> for HttpFLvError {
-    fn from(error: SessionError) -> Self {
-        HttpFLvError {
-            value: HttpFLvErrorValue::SessionError(error),
-        }
-    }
+    #[fail(display = "event execute error: {}", _0)]
+    ChannelError(StreamHubError),
+    #[fail(display = "tokio: oneshot receiver err: {}", _0)]
+    RecvError(#[cause] RecvError),
+    #[fail(display = "channel recv error")]
+    ChannelRecvError,
+    #[fail(display = "send frame data error")]
+    SendFrameDataErr,
 }
 
 impl From<FlvMuxerError> for HttpFLvError {
@@ -71,10 +66,18 @@ impl From<Amf0WriteError> for HttpFLvError {
     }
 }
 
-impl From<MetadataError> for HttpFLvError {
-    fn from(error: MetadataError) -> Self {
+impl From<StreamHubError> for HttpFLvError {
+    fn from(error: StreamHubError) -> Self {
         HttpFLvError {
-            value: HttpFLvErrorValue::MetadataError(error),
+            value: HttpFLvErrorValue::ChannelError(error),
+        }
+    }
+}
+
+impl From<RecvError> for HttpFLvError {
+    fn from(error: RecvError) -> Self {
+        HttpFLvError {
+            value: HttpFLvErrorValue::RecvError(error),
         }
     }
 }

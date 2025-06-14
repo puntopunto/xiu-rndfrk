@@ -1,3 +1,4 @@
+#![allow(non_local_definitions)]
 use {
     failure::{Backtrace, Fail},
     bytesio::bytes_errors::{BytesReadError, BytesWriteError},
@@ -6,13 +7,15 @@ use {
 
 #[derive(Debug, Fail)]
 pub enum UnpackErrorValue {
-    #[fail(display = "bytes read error: {}\n", _0)]
+    #[fail(display = "bytes read error: {}", _0)]
     BytesReadError(BytesReadError),
     #[fail(display = "unknow read state")]
     UnknowReadState,
     #[fail(display = "empty chunks")]
     EmptyChunks,
     //IO(io::Error),
+    #[fail(display = "cannot parse")]
+    CannotParse,
 }
 
 #[derive(Debug)]
@@ -40,7 +43,7 @@ pub enum PackErrorValue {
     NotExistHeader,
     #[fail(display = "unknow read state")]
     UnknowReadState,
-    #[fail(display = "bytes writer error: {}\n", _0)]
+    #[fail(display = "bytes writer error: {}", _0)]
     BytesWriteError(BytesWriteError),
 }
 

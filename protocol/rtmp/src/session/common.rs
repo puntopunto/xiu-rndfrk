@@ -1,3 +1,6 @@
+use streamhub::define::{DataSender, StatisticData, StatisticDataSender};
+use tokio::sync::oneshot;
+
 use {
     super::{
         define::SessionType,
@@ -23,8 +26,8 @@ use {
             PublishType, PublisherInfo, StreamHubEvent, StreamHubEventSender, SubscribeType,
             SubscriberInfo, TStreamHandler,
         },
-        errors::{ChannelError, ChannelErrorValue},
-        statistics::StreamStatistics,
+        errors::{StreamHubError, StreamHubErrorValue},
+        statistics::StatisticsStream,
         stream::StreamIdentifier,
         utils::Uuid,
     },
@@ -32,6 +35,10 @@ use {
 };
 
 pub struct Common {
+    /* Used to mark the subscriber's the data producer
+    in channels and delete it from map when unsubscribe
+    is called. */
+    session_id: Uuid,
     //only Server Subscriber or Client Publisher needs to send out trunck data.
     packetizer: Option<ChunkPacketizer>,
 
@@ -46,6 +53,8 @@ pub struct Common {
     /*request URL from client*/
     pub request_url: String,
     pub stream_handler: Arc<RtmpStreamHandler>,
+    /* now used for subscriber session */
+    statistic_data_sender: Option<StatisticDataSender>,
 }
 
 impl Common {
@@ -59,6 +68,7 @@ impl Common {
         let (init_producer, init_consumer) = mpsc::unbounded_channel();
 
         Self {
+            session_id: Uuid::new(streamhub::utils::RandomDigitCount::Four),
             packetizer,
 
             data_sender: init_producer,
@@ -69,6 +79,7 @@ impl Common {
             remote_addr,
             request_url: String::default(),
             stream_handler: Arc::new(RtmpStreamHandler::new()),
+            statistic_data_sender: None,
             //cache: None,
         }
     }
@@ -78,10 +89,37 @@ impl Common {
             if let Some(data) = self.data_receiver.recv().await {
                 match data {
                     FrameData::Audio { timestamp, data } => {
+                        let data_size = data.len();
                         self.send_audio(data, timestamp).await?;
+
+                        if let Some(sender) = &self.statistic_data_sender {
+                            let statistic_audio_data = StatisticData::Audio {
+                                uuid: Some(self.session_id),
+                                aac_packet_type: 1,
+                                data_size,
+                                duration: 0,
+                            };
+                            if let Err(err) = sender.send(statistic_audio_data) {
+                                log::error!("send statistic_data err: {}", err);
+                            }
+                        }
                     }
                     FrameData::Video { timestamp, data } => {
+                        let data_size = data.len();
                         self.send_video(data, timestamp).await?;
+
+                        if let Some(sender) = &self.statistic_data_sender {
+                            let statistic_video_data = StatisticData::Video {
+                                uuid: Some(self.session_id),
+                                frame_count: 1,
+                                data_size,
+                                is_key_frame: None,
+                                duration: 0,
+                            };
+                            if let Err(err) = sender.send(statistic_video_data) {
+                                log::error!("send statistic_data err: {}", err);
+                            }
+                        }
                     }
                     FrameData::MetaData { timestamp, data } => {
                         self.send_metadata(data, timestamp).await?;
@@ -202,7 +240,7 @@ impl Common {
         match self.data_sender.send(channel_data) {
             Ok(_) => {}
             Err(err) => {
-                log::error!("receive audio err {}\n", err);
+                log::error!("receive audio err {}", err);
                 return Err(SessionError {
                     value: SessionErrorValue::SendFrameDataErr,
                 });
@@ -240,7 +278,7 @@ impl Common {
         Ok(())
     }
 
-    fn get_subscriber_info(&mut self, sub_id: Uuid) -> SubscriberInfo {
+    fn get_subscriber_info(&mut self) -> SubscriberInfo {
         let remote_addr = if let Some(addr) = self.remote_addr {
             addr.to_string()
         } else {
@@ -248,15 +286,16 @@ impl Common {
         };
 
         let sub_type = match self.session_type {
-            SessionType::Client => SubscribeType::PublisherRtmp,
-            SessionType::Server => SubscribeType::PlayerRtmp,
+            SessionType::Client => SubscribeType::RtmpRelay,
+            SessionType::Server => SubscribeType::RtmpPull,
         };
 
         SubscriberInfo {
-            id: sub_id,
+            id: self.session_id,
             /*rtmp local client subscribe from local rtmp session
             and publish(relay) the rtmp steam to remote RTMP server*/
             sub_type,
+            sub_data_type: streamhub::define::SubDataType::Frame,
             notify_info: NotifyInfo {
                 request_url: self.request_url.clone(),
                 remote_addr,
@@ -264,7 +303,7 @@ impl Common {
         }
     }
 
-    fn get_publisher_info(&mut self, sub_id: Uuid) -> PublisherInfo {
+    fn get_publisher_info(&mut self) -> PublisherInfo {
         let remote_addr = if let Some(addr) = self.remote_addr {
             addr.to_string()
         } else {
@@ -272,13 +311,14 @@ impl Common {
         };
 
         let pub_type = match self.session_type {
-            SessionType::Client => PublishType::RelayRtmp,
-            SessionType::Server => PublishType::PushRtmp,
+            SessionType::Client => PublishType::RtmpRelay,
+            SessionType::Server => PublishType::RtmpPush,
         };
 
         PublisherInfo {
-            id: sub_id,
+            id: self.session_id,
             pub_type,
+            pub_data_type: streamhub::define::PubDataType::Frame,
             notify_info: NotifyInfo {
                 request_url: self.request_url.clone(),
                 remote_addr,
@@ -286,31 +326,30 @@ impl Common {
         }
     }
 
-    /*Subscribe from local channels and then send data to retmote common player or local RTMP relay push client*/
-    pub async fn subscribe_from_channels(
+    /* Subscribe from stream hub and push stream data to players or other rtmp nodes */
+    pub async fn subscribe_from_stream_hub(
         &mut self,
         app_name: String,
         stream_name: String,
-        sub_id: Uuid,
     ) -> Result<(), SessionError> {
         log::info!(
-            "subscribe_from_channels, app_name: {} stream_name: {} subscribe_id: {}",
+            "subscribe_from_stream_hub, app_name: {} stream_name: {} subscribe_id: {}",
             app_name,
             stream_name,
-            sub_id
+            self.session_id
         );
-
-        let (sender, receiver) = mpsc::unbounded_channel();
 
         let identifier = StreamIdentifier::Rtmp {
             app_name,
             stream_name,
         };
 
+        let (event_result_sender, event_result_receiver) = oneshot::channel();
+
         let subscribe_event = StreamHubEvent::Subscribe {
             identifier,
-            info: self.get_subscriber_info(sub_id),
-            sender,
+            info: self.get_subscriber_info(),
+            result_sender: event_result_sender,
         };
         let rv = self.event_producer.send(subscribe_event);
 
@@ -320,16 +359,32 @@ impl Common {
             });
         }
 
-        self.data_receiver = receiver;
+        let result = event_result_receiver.await??;
+        self.data_receiver = result.0.frame_receiver.unwrap();
+
+        let statistic_data_sender: Option<StatisticDataSender> = result.1;
+
+        if let Some(sender) = &statistic_data_sender {
+            let statistic_subscriber = StatisticData::Subscriber {
+                id: self.session_id,
+                remote_addr: self.remote_addr.unwrap().to_string(),
+                start_time: chrono::Local::now(),
+                sub_type: SubscribeType::RtmpPull,
+            };
+            if let Err(err) = sender.send(statistic_subscriber) {
+                log::error!("send statistic_subscriber err: {}", err);
+            }
+        }
+
+        self.statistic_data_sender = statistic_data_sender;
 
         Ok(())
     }
 
-    pub async fn unsubscribe_from_channels(
+    pub async fn unsubscribe_from_stream_hub(
         &mut self,
         app_name: String,
         stream_name: String,
-        sub_id: Uuid,
     ) -> Result<(), SessionError> {
         let identifier = StreamIdentifier::Rtmp {
             app_name,
@@ -338,36 +393,34 @@ impl Common {
 
         let subscribe_event = StreamHubEvent::UnSubscribe {
             identifier,
-            info: self.get_subscriber_info(sub_id),
+            info: self.get_subscriber_info(),
         };
         if let Err(err) = self.event_producer.send(subscribe_event) {
-            log::error!("unsubscribe_from_channels err {}\n", err);
+            log::error!("unsubscribe_from_stream_hub err {}", err);
         }
 
         Ok(())
     }
 
-    /*Begin to receive stream data from remote RTMP push client or local RTMP relay pull client*/
-    pub async fn publish_to_channels(
+    /* Publish RTMP streams to stream hub, the streams can be pushed from remote or pulled from remote to local */
+    pub async fn publish_to_stream_hub(
         &mut self,
         app_name: String,
         stream_name: String,
-        pub_id: Uuid,
         gop_num: usize,
     ) -> Result<(), SessionError> {
-        self.stream_handler
-            .set_cache(Cache::new(app_name.clone(), stream_name.clone(), gop_num))
-            .await;
+        let (event_result_sender, event_result_receiver) = oneshot::channel();
+        let info = self.get_publisher_info();
+        let remote_addr = info.notify_info.remote_addr.clone();
 
-        let (sender, receiver) = mpsc::unbounded_channel();
         let publish_event = StreamHubEvent::Publish {
             identifier: StreamIdentifier::Rtmp {
-                app_name,
-                stream_name,
+                app_name: app_name.clone(),
+                stream_name: stream_name.clone(),
             },
-            receiver,
-            info: self.get_publisher_info(pub_id),
+            info,
             stream_handler: self.stream_handler.clone(),
+            result_sender: event_result_sender,
         };
 
         if self.event_producer.send(publish_event).is_err() {
@@ -376,18 +429,35 @@ impl Common {
             });
         }
 
-        self.data_sender = sender;
+        let result = event_result_receiver.await??;
+        self.data_sender = result.0.unwrap();
+
+        let statistic_data_sender: Option<StatisticDataSender> = result.2;
+
+        if let Some(sender) = &statistic_data_sender {
+            let statistic_publisher = StatisticData::Publisher {
+                id: self.session_id,
+                remote_addr,
+                start_time: chrono::Local::now(),
+            };
+            if let Err(err) = sender.send(statistic_publisher) {
+                log::error!("send statistic_publisher err: {}", err);
+            }
+        }
+
+        self.stream_handler
+            .set_cache(Cache::new(gop_num, statistic_data_sender))
+            .await;
         Ok(())
     }
 
-    pub async fn unpublish_to_channels(
+    pub async fn unpublish_to_stream_hub(
         &mut self,
         app_name: String,
         stream_name: String,
-        pub_id: Uuid,
     ) -> Result<(), SessionError> {
         log::info!(
-            "unpublish_to_channels, app_name:{}, stream_name:{}",
+            "unpublish_to_stream_hub, app_name:{}, stream_name:{}",
             app_name,
             stream_name
         );
@@ -396,13 +466,13 @@ impl Common {
                 app_name: app_name.clone(),
                 stream_name: stream_name.clone(),
             },
-            info: self.get_publisher_info(pub_id),
+            info: self.get_publisher_info(),
         };
 
         match self.event_producer.send(unpublish_event) {
             Err(_) => {
                 log::error!(
-                    "unpublish_to_channels error.app_name: {}, stream_name: {}",
+                    "unpublish_to_stream_hub error.app_name: {}, stream_name: {}",
                     app_name,
                     stream_name
                 );
@@ -412,7 +482,7 @@ impl Common {
             }
             _ => {
                 log::info!(
-                    "unpublish_to_channels successfully.app_name: {}, stream_name: {}",
+                    "unpublish_to_stream_hub successfully.app_name: {}, stream_name: {}",
                     app_name,
                     stream_name
                 );
@@ -476,35 +546,45 @@ impl RtmpStreamHandler {
 impl TStreamHandler for RtmpStreamHandler {
     async fn send_prior_data(
         &self,
-        sender: FrameDataSender,
+        data_sender: DataSender,
         sub_type: SubscribeType,
-    ) -> Result<(), ChannelError> {
+    ) -> Result<(), StreamHubError> {
+        let sender = match data_sender {
+            DataSender::Frame { sender } => sender,
+            DataSender::Packet { sender: _ } => {
+                return Err(StreamHubError {
+                    value: StreamHubErrorValue::NotCorrectDataSenderType,
+                });
+            }
+        };
         if let Some(cache) = &mut *self.cache.lock().await {
             if let Some(meta_body_data) = cache.get_metadata() {
-                sender.send(meta_body_data).map_err(|_| ChannelError {
-                    value: ChannelErrorValue::SendError,
+                log::info!("send_prior_data: meta_body_data: ");
+                sender.send(meta_body_data).map_err(|_| StreamHubError {
+                    value: StreamHubErrorValue::SendError,
                 })?;
             }
             if let Some(audio_seq_data) = cache.get_audio_seq() {
-                sender.send(audio_seq_data).map_err(|_| ChannelError {
-                    value: ChannelErrorValue::SendError,
+                log::info!("send_prior_data: audio_seq_data: ",);
+                sender.send(audio_seq_data).map_err(|_| StreamHubError {
+                    value: StreamHubErrorValue::SendError,
                 })?;
             }
             if let Some(video_seq_data) = cache.get_video_seq() {
-                sender.send(video_seq_data).map_err(|_| ChannelError {
-                    value: ChannelErrorValue::SendError,
+                log::info!("send_prior_data: video_seq_data:");
+                sender.send(video_seq_data).map_err(|_| StreamHubError {
+                    value: StreamHubErrorValue::SendError,
                 })?;
             }
             match sub_type {
-                SubscribeType::PlayerRtmp
-                | SubscribeType::PlayerHttpFlv
-                | SubscribeType::PlayerHls
-                | SubscribeType::GenerateHls => {
+                SubscribeType::RtmpPull
+                | SubscribeType::RtmpRemux2HttpFlv
+                | SubscribeType::RtmpRemux2Hls => {
                     if let Some(gops_data) = cache.get_gops_data() {
                         for gop in gops_data {
                             for channel_data in gop.get_frame_data() {
-                                sender.send(channel_data).map_err(|_| ChannelError {
-                                    value: ChannelErrorValue::SendError,
+                                sender.send(channel_data).map_err(|_| StreamHubError {
+                                    value: StreamHubErrorValue::SendError,
                                 })?;
                             }
                         }
@@ -516,10 +596,10 @@ impl TStreamHandler for RtmpStreamHandler {
 
         Ok(())
     }
-    async fn get_statistic_data(&self) -> Option<StreamStatistics> {
-        if let Some(cache) = &mut *self.cache.lock().await {
-            return Some(cache.av_statistics.get_avstatistic_data().await);
-        }
+    async fn get_statistic_data(&self) -> Option<StatisticsStream> {
+        //if let Some(cache) = &mut *self.cache.lock().await {
+        //    return Some(cache.av_statistics.get_avstatistic_data().await);
+        //}
 
         None
     }

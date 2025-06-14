@@ -1,3 +1,4 @@
+#![allow(non_local_definitions)]
 use {
     failure::{Backtrace, Fail},
     std::{fmt, io::Error},
@@ -9,7 +10,7 @@ pub struct ConfigError {
 
 #[derive(Debug, Fail)]
 pub enum ConfigErrorValue {
-    #[fail(display = "IO error: {}\n", _0)]
+    #[fail(display = "IO error: {}", _0)]
     IOError(Error),
 }
 
