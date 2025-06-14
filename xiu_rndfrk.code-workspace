@@ -5,8 +5,7 @@
 			"path": "."
 		},
 		{
-			"name": "xiurndfrk_ci",
-			"path": "../../../CID/CID-Projects/MediaProjects/xiurndfrk_ci"
+			"path": "../../../CI/projects/MediaProjects/ci_xiurndfrk"
 		}
 	],
 	"settings": {
@@ -82,7 +81,12 @@
 		"ansible.lightspeed.suggestions.enabled": true,
 		"files.autoSave": "afterDelay",
 		"editor.fontFamily": "'JetBrainsMono Nerd Font', Consolas, 'Courier New', monospace",
-		"inline-bookmarks.view.showVisibleFilesOnly": true
+		"inline-bookmarks.view.showVisibleFilesOnly": true,
+		"containers.containers.groupByLabel": "com.testorg.filtering.xiu-test",
+		"containers.contexts.showInStatusBar": true,
+		"containers.networks.groupBy": "NetworkDriver",
+		"containers.volumes.groupBy": "VolumeName",
+		"containers.volumes.sortBy": "Label"
 	},
 	"tasks": {
 		"version": "2.0.0",

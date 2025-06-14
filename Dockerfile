@@ -119,7 +119,7 @@ ARG pprtmp_server="pprtmp"
 ARG apkq='apk --quiet --no-interactive --no-progress --no-cache'
 
 #### Users and groups settings
-##### App user 
+##### App user
 ARG app_user="appuser"
 ARG appgroup="appusers"
 ARG user_gecos="Special no-login user for app"

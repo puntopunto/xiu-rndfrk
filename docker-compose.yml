@@ -9,7 +9,7 @@ name: "restreamer"
 
 # App containers
 
-# Restremer 'pod'
+# Restreamer 'pod'
 services:
 
   # 1. Base streamer
