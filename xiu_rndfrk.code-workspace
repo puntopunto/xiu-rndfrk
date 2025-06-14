@@ -5,7 +5,7 @@
 			"path": "."
 		},
 		{
-			"path": "../../../CI/projects/MediaProjects/ci_xiurndfrk"
+			"path": "../../CI/projects/MediaProjects/ci_xiurndfrk"
 		}
 	],
 	"settings": {
@@ -89,8 +89,19 @@
 		"containers.volumes.sortBy": "Label",
 		"cSpell.ignoreWords": [
 			"addgroup",
-			"adduser"
-		]
+			"adduser",
+			"appgroup",
+			"appuser",
+			"appusers",
+			"buildroot",
+			"gecos",
+			"nologin",
+			"openssl",
+			"rustc"
+		],
+		"files.exclude": {
+			"**/*.code-workspace": true
+		}
 	},
 	"tasks": {
 		"version": "2.0.0",

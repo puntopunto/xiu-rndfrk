@@ -1,13 +1,12 @@
 # Glob vars
-COPY_CONF_FILES = sh ./update_project_conf.sh;
+COPY_CONF_FILES = sh ./update_project_conf.sh
 
 # build local source codes
 local:
-	cd ./confs && $(COPY_CONF_FILES) "offline";
-
+	cd ./confs && $(COPY_CONF_FILES) "local"
 # pull the online crates codes and build
 online:
-	cd ./confs && $(COPY_CONF_FILES) "online";
+	cd ./confs && $(COPY_CONF_FILES) "online"
 
 update:
 	cargo update
@@ -25,4 +24,4 @@ build-musl:
 	cargo build --target "x86_64-unknown-linux-musl"
 
 not_spport:
-	echo "input make <local|online|update|build|build-musl|clean|check>";
+	echo "input make <local|online|update|build|build-musl|clean|check>"
