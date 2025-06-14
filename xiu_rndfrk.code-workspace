@@ -86,7 +86,11 @@
 		"containers.contexts.showInStatusBar": true,
 		"containers.networks.groupBy": "NetworkDriver",
 		"containers.volumes.groupBy": "VolumeName",
-		"containers.volumes.sortBy": "Label"
+		"containers.volumes.sortBy": "Label",
+		"cSpell.ignoreWords": [
+			"addgroup",
+			"adduser"
+		]
 	},
 	"tasks": {
 		"version": "2.0.0",

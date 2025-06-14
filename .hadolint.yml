@@ -11,7 +11,7 @@ label-schema:
   version: "0.1a"
   description: "Hadolint settings for Alpine/Scratch Rust app."
   documentation: "https://github.com/puntopunto/xiu-rndfrk"
-  git-revision: "3bdbd9aa7af5d76a57d53d179d7ae3aff7f09a7a"
+  git-revision: "3bdbd9aa7af5d76a57d53d179d7ae3aff7f09a7a" #ignore: DS173237
   license: "GNU/GPLv3"
 no-color: false
 no-fail: false

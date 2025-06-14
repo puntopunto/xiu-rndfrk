@@ -1,9 +1,8 @@
 # syntax=docker/dockerfile:1
-# escape=`
 
 # ------------------------------------------------------------------------------
 
-# XIU stream/restream server
+# XIU streaming/re-streaming server
 
 # ~ Test image
 
@@ -16,13 +15,14 @@
 
 # ______________________________________________________________________________
 # ------------------------------------------------------------------------------
+#TODO: почистить.
 ## Global args
-ARG builder_version="alpine"
-ARG runner_version="latest"
+#ARG builder="alpine"
+#ARG runner="latest"
 
 # ------------------------------------------------------------------------------
 ## 1. Build app
-FROM rust:${builder_version} AS builder
+FROM rust:alpine AS builder
 
 ### Args
 #### Builder env
@@ -47,7 +47,7 @@ ARG build_group="builders"
 
 #### Rustup-init env args
 #TODO: check args is accessible for installer during installong 'Rust'.
-ARG RUSTUP_TOOLCHAIN="stable-x86_64-unknown-linux-musl"
+ARG TOOLCHAIN="stable-x86_64-unknown-linux-musl"
 
 #### Cargo build env
 ARG CARGO_BUILD_TARGET="x86_64-unknown-linux-musl"
@@ -60,23 +60,23 @@ ARG OUT_DIR "/release"
 #TODO: check dev packs.
 # Install build packs
 # Create build user
-RUN ${apkq} upgrade --latest; `
-    ${apkq} add --latest "openssl-dev" "make" "gcc" "musl-dev"; `
-    ${apkq} cache clean && rm -rf "/var/cache/apk" "/etc/apk/cache"; `
-    rustup update "stable"; `
+RUN ${apkq} upgrade --latest; \
+    ${apkq} add --latest "openssl-dev" "make" "gcc" "musl-dev"; \
+    ${apkq} cache clean && rm -rf "/var/cache/apk" "/etc/apk/cache"; \
+    rustup update "stable"; \
     #TODO: check lines below for needing.
-    # rustup component add "cargo-x86_64-unknown-linux-musl" `
-    #     "rust-std-x86_64-unknown-linux-musl" `
-    #     "rustc-x86_64-unknown-linux-musl"; `
-    # rustup toolchain install "stable-x86_64-unknown-linux-musl"; `
-    # rustup target add "x86_64-unknown-linux-musl" `
-    # rustup default "stable-x86_64-unknown-linux-musl"; `
-    addgroup -S ${build_group}; `
+    # rustup component add "cargo-x86_64-unknown-linux-musl" \
+    #     "rust-std-x86_64-unknown-linux-musl" \
+    #     "rustc-x86_64-unknown-linux-musl"; \
+    # rustup toolchain install "stable-x86_64-unknown-linux-musl"; \
+    # rustup target add "x86_64-unknown-linux-musl" \
+    # rustup default "stable-x86_64-unknown-linux-musl"; \
+    addgroup -S ${build_group}; \
     adduser -G "${build_group}" -D -S "${build_user}";
 
 ### Building
 #### CWD
-WORKDIR ${buildroot}
+WORKDIR $buildroot
 
 #### Copying sources and set perms
 #TODO: check if this need if run/build from git.
@@ -99,7 +99,7 @@ COPY ${source_config_dir} ${config_volume}
 # ------------------------------------------------------------------------------
 ## 2. Run app
 #TODO: mount volume with workload configs and check size/layering.
-FROM alpine:${runner_version} AS runner
+FROM alpine:latest AS runner
 
 ### Args
 #### Dirs
@@ -135,7 +135,7 @@ ARG hc_wait=10
 ARG hc_timer=0
 
 ##### Apps owner
-ARG app_owner="root"
+ARG app_owner="puntopunto"
 
 ##### Apps permission
 #TODO: check exec permissions
@@ -155,12 +155,12 @@ WORKDIR ${app_dir}
 
 ### Copy app
 VOLUME "/app/config"
-COPY    --from=builder `
-        --chown="${app_owner}:${appgroup}" `
-        --chmod=${app_dir_perms} `
-            "${distribution}/${app}", `
-            "${distribution}/${web_server}", `
-            "${distribution}/${pprtmp_server}" `
+COPY    --from=builder \
+        --chown="${app_owner}:${appgroup}" \
+        --chmod=${app_dir_perms} \
+            "${distribution}/${app}", \
+            "${distribution}/${web_server}", \
+            "${distribution}/${pprtmp_server}" \
                 ./
 
 ### Setup app
@@ -169,20 +169,20 @@ COPY    --from=builder `
 # Setup timezone
 # Setup user/group/perms
 # Remove unnecessary packs and delete cache
-RUN ${apkq} upgrade --latest; `
-    ${apkq} add --latest "alpine-conf"; `
-    setup-timezone -i "${TZ}"; `
-    addgroup -S "${appgroup}"; `
-    adduser -G "${appgroup}" `
-        -g "${user_gecos}" `
-        -s "${user_shell}" `
-        -h "${user_home}" `
-        -H `
-        -D `
-        -S `
-            "${app_user}"; `
-    chmod ${app_exec_perms} "${app_dir}/${app}"; `
-    ${apkq} del "alpine-conf"; `
+RUN ${apkq} upgrade --latest; \
+    ${apkq} add --latest "alpine-conf"; \
+    setup-timezone -i "${TZ}"; \
+    addgroup -S "${appgroup}"; \
+    adduser -G "${appgroup}" \
+        -g "${user_gecos}" \
+        -s "${user_shell}" \
+        -h "${user_home}" \
+        -H \
+        -D \
+        -S \
+            "${app_user}"; \
+    chmod ${app_exec_perms} "${app_dir}/${app}"; \
+    ${apkq} del "alpine-conf"; \
     ${apkq} cache clean && rm -rf "/var/cache/apk" "/etc/apk/cache";
 
 ### Ports
@@ -195,16 +195,16 @@ EXPOSE 8000
 EXPOSE 8000/udp
 
 ### Healthcheck
-HEALTHCHECK --interval=5m --timeout=30s --start-period=5s --retries=3 `
+HEALTHCHECK --interval=5m --timeout=30s --start-period=5s --retries=3 \
         #TODO: pipe status code and message output.
-        CMD [ `
-        "/bin/ping" `
-        "-q" `
-        "-c" ${hc_count} `
-        "-W" ${hc_wait} `
-        "-w" ${hc_timer} `
-        "www.ru"; `
-        exit $?; `
+        CMD [ \
+        "/bin/ping" \
+        "-q" \
+        "-c" ${hc_count} \
+        "-W" ${hc_wait} \
+        "-w" ${hc_timer} \
+        "www.ru"; \
+        exit $?; \
         ]
 
 ### Start app

@@ -25,5 +25,5 @@ clean:
 build:
 	cargo build
 
-build-musl-release:
-	cargo build --target "x86_64-unknown-linux-musl" --release
+build-musl:
+	cargo build --target "x86_64-unknown-linux-musl"
