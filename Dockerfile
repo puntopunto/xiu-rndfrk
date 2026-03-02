@@ -82,8 +82,8 @@ WORKDIR "$buildroot"
 #TODO: check if this need if run/build from git.
 # COPY --chown="$build_user":"$build_group" --chmod="$buildroot_perms" . .
 #TODO: check if script works, thing about to replace hardcoded line.
-RUN find . -type f -name "*.sh" -exec chmod +x {} +
-# RUN chmod +x 'confs/update_project_conf.sh'
+# RUN find . -type f -name "*.sh" -exec chmod +x {} +
+RUN chmod +x 'confs/update_project_conf.sh'
 
 ##### Switch user
 #TODO: проверить переключение пользователя.
